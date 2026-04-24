@@ -22,6 +22,8 @@ export type TransmissionNode = {
   driver: string;
   evidenceType: EvidenceType;
   confidence: Confidence;
+  researchImplication: string;
+  whyItMatters: string;
   polarity: "positive" | "negative" | "mixed" | "risk" | "neutral";
   x: number;
   y: number;
@@ -53,6 +55,16 @@ export type EvidenceItem = {
   confidence: Confidence;
   importance: "Low" | "Medium" | "High";
   driver: string;
+  sourceLabel?: string;
+  sourceType?: string;
+  sourceQuality?: "High" | "Medium" | "Low";
+};
+
+export type ResearchJudgment = {
+  title: string;
+  stance: string;
+  summary: string;
+  watchItems: string[];
 };
 
 export type BullBearCase = {
@@ -78,6 +90,7 @@ export type DemoResearchRun = {
   scenario: string;
   headline: string;
   thesis: string;
+  judgment: ResearchJudgment;
   keyDrivers: string[];
   metrics: Array<{
     label: string;

@@ -2,6 +2,7 @@ import {
   BarChart3,
   Blocks,
   CircuitBoard,
+  Gauge,
   Landmark,
   type LucideIcon,
   RadioTower,
@@ -58,32 +59,35 @@ export default function Home() {
           timestamp={run.timestamp}
         />
 
-        <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
           <div className="space-y-4">
-            <section className="grid gap-4 lg:grid-cols-[1fr_460px]">
-              <div className="space-y-4">
-                <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{run.scenario}</Badge>
-                    <Badge variant="inference">Monetary transmission</Badge>
-                  </div>
-                  <h2 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-normal text-zinc-50 md:text-5xl">
-                    {run.headline}
-                  </h2>
-                  <p className="mt-4 max-w-4xl text-base leading-7 text-zinc-300">
-                    {run.thesis}
-                  </p>
-                </div>
-                <MetricStrip metrics={run.metrics} />
+            <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{run.scenario}</Badge>
+                <Badge variant="inference">Monetary transmission</Badge>
               </div>
-              <DriverPanel drivers={run.keyDrivers} />
-            </section>
+              <h2 className="mt-4 max-w-5xl text-3xl font-semibold leading-tight tracking-normal text-zinc-50 md:text-5xl">
+                {run.headline}
+              </h2>
+              <p className="mt-4 max-w-5xl text-base leading-7 text-zinc-300">
+                {run.thesis}
+              </p>
+            </div>
+            <MetricStrip metrics={run.metrics} />
+          </div>
+          <DriverPanel drivers={run.keyDrivers} />
+        </section>
 
+        <ResearchJudgmentCard judgment={run.judgment} />
+
+        <TransmissionMap
+          nodes={run.transmissionNodes}
+          edges={run.transmissionEdges}
+        />
+
+        <section className="grid gap-4 xl:grid-cols-[1fr_380px]">
+          <div className="space-y-4">
             <AgentTimeline agents={run.agents} />
-            <TransmissionMap
-              nodes={run.transmissionNodes}
-              edges={run.transmissionEdges}
-            />
             <DataChartPanel charts={run.charts} />
             <EvidenceBoard evidence={run.evidence} />
           </div>
@@ -95,7 +99,7 @@ export default function Home() {
           </aside>
         </section>
       </div>
-      </main>
+    </main>
   );
 }
 
@@ -184,5 +188,52 @@ function DriverPanel({ drivers }: { drivers: string[] }) {
         presenting a free-form assistant answer.
       </p>
     </div>
+  );
+}
+
+function ResearchJudgmentCard({
+  judgment,
+}: {
+  judgment: {
+    title: string;
+    stance: string;
+    summary: string;
+    watchItems: string[];
+  };
+}) {
+  return (
+    <section className="grid gap-4 rounded-lg border border-cyan-300/15 bg-zinc-950/80 p-5 lg:grid-cols-[1fr_420px]">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="data">
+            <Gauge />
+            {judgment.title}
+          </Badge>
+          <Badge variant="outline">Frontend demo | no live data</Badge>
+        </div>
+        <h3 className="mt-4 text-2xl font-semibold tracking-normal text-zinc-50">
+          {judgment.stance}
+        </h3>
+        <p className="mt-3 max-w-4xl text-sm leading-7 text-zinc-300">
+          {judgment.summary}
+        </p>
+      </div>
+      <div className="rounded-md border border-white/10 bg-black/25 p-4">
+        <div className="font-mono text-xs uppercase text-muted-foreground">
+          Monitor before upgrading conviction
+        </div>
+        <div className="mt-3 grid gap-2">
+          {judgment.watchItems.map((item) => (
+            <div
+              key={item}
+              className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-zinc-950/65 px-3 py-2"
+            >
+              <span className="text-sm text-zinc-200">{item}</span>
+              <span className="size-1.5 shrink-0 rounded-full bg-cyan-300" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
