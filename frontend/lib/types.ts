@@ -7,6 +7,8 @@ export type EvidenceType =
 
 export type Confidence = "Low" | "Low/Medium" | "Medium" | "Medium/High" | "High";
 
+export type ResearchDataSource = "Backend response" | "Frontend fallback";
+
 export type AgentStage = {
   name: string;
   role: string;
