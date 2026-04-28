@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.demo_data import DEMO_RESEARCH_RUN
+from app.orchestrator import run_research_pipeline
 from app.schemas import ResearchRun, ResearchRunRequest
 
 app = FastAPI(title="Financial Research OS API")
@@ -30,5 +30,5 @@ def health() -> dict[str, str]:
     response_model=ResearchRun,
     response_model_exclude_none=True,
 )
-def run_research(_: ResearchRunRequest) -> ResearchRun:
-    return DEMO_RESEARCH_RUN
+def run_research(request: ResearchRunRequest) -> ResearchRun:
+    return run_research_pipeline(request)
