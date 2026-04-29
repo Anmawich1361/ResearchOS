@@ -105,9 +105,14 @@ const nodeTypes = {
 type TransmissionMapProps = {
   nodes: TransmissionNode[];
   edges: TransmissionEdge[];
+  description: string;
 };
 
-export function TransmissionMap({ nodes, edges }: TransmissionMapProps) {
+export function TransmissionMap({
+  nodes,
+  edges,
+  description,
+}: TransmissionMapProps) {
   const [selectedId, setSelectedId] = useState(nodes[0]?.id ?? "");
 
   const flowNodes = useMemo<Node<MapNodeData>[]>(
@@ -170,8 +175,7 @@ export function TransmissionMap({ nodes, edges }: TransmissionMapProps) {
               Transmission map
             </CardTitle>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              The primary research artifact: how rate cuts move through bank
-              balance-sheet mechanics, credit quality, provisions, and valuation.
+              {description}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

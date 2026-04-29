@@ -20,5 +20,6 @@ curl -X POST http://127.0.0.1:8000/research/run \
   -d '{"question":"How would rate cuts affect Canadian banks?"}'
 ```
 
-Milestone 2 intentionally runs a deterministic Canadian banks/rate-cuts agent pipeline.
+Milestone 2 intentionally returns hardcoded demo data for the Canadian
+banks/rate-cuts, oil/airlines, and AI capex/semis-cloud golden paths.
 There are no OpenAI, FRED, SEC, database, auth, or live-data integrations yet.
