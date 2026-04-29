@@ -223,6 +223,36 @@ Before asking for review, confirm:
 - Required checks were run, or blockers were reported with exact errors.
 - Documentation does not contain stale PR numbers, temporary SHAs, local-only assumptions, or hidden formatting characters.
 
+## Review guidelines
+
+Codex reviewers should prioritize ResearchOS product constraints and regression risks over general style preferences.
+
+For product and runtime changes, focus review on:
+
+- new buy/sell recommendations
+- price targets
+- personalized investment-advice behavior
+- deterministic fallback regressions
+- live external APIs becoming required for correctness
+- accidental `/research/run` schema changes
+- frontend/backend contract mismatches
+- evidence label drift
+- golden-path demo regressions
+- unknown/custom-question fallback regressions
+- missing tests for backend behavior changes
+- external data-source clients missing timeout, fallback, or fixture tests
+- tests requiring live network access
+- unnecessary production dependencies
+- broad scope creep
+
+For documentation-only changes, verify:
+
+- no backend or frontend runtime behavior changed
+- docs do not contradict `AGENTS.md` or deployment docs
+- docs do not include stale PR numbers, temporary SHAs, or machine-specific paths
+
+Do not block PRs for pure style preferences unless the style issue creates ambiguity, weakens reviewability, or increases regression risk.
+
 ## Definition of done
 
 A change is done when:
