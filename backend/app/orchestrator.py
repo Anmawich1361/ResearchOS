@@ -1,49 +1,24 @@
-from app.agents import (
-    run_data_agent,
-    run_framework_agent,
-    run_planner,
-    run_skeptic_agent,
-    run_synthesis_agent,
+from app.case_router import DemoCase, route_question
+from app.demo_cases import (
+    AI_CAPEX_SEMIS_RESEARCH_RUN,
+    CANADIAN_BANKS_RESEARCH_RUN,
+    OIL_AIRLINES_RESEARCH_RUN,
 )
 from app.schemas import ResearchRun, ResearchRunRequest
 
 
-def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
-    plan = run_planner(request.question)
-    data = run_data_agent(plan)
-    framework = run_framework_agent(plan, data)
-    skeptic = run_skeptic_agent(plan, data, framework)
-    synthesis = run_synthesis_agent(plan, data, framework, skeptic)
+_CASE_RUNS: dict[DemoCase, ResearchRun] = {
+    "canadian_banks": CANADIAN_BANKS_RESEARCH_RUN,
+    "oil_airlines": OIL_AIRLINES_RESEARCH_RUN,
+    "ai_capex_semis": AI_CAPEX_SEMIS_RESEARCH_RUN,
+}
 
-    return ResearchRun(
-        question=plan.question,
-        classification=plan.classification,
-        timestamp=plan.timestamp,
-        scenario=plan.scenario,
-        headline=synthesis.headline,
-        thesis=synthesis.thesis,
-        judgment=synthesis.judgment,
-        keyDrivers=plan.keyDrivers,
-        metrics=data.metrics,
-        agents=[
-            plan.stage,
-            data.stage,
-            framework.stage,
-            skeptic.stage,
-            synthesis.stage,
-        ],
-        transmissionNodes=framework.transmissionNodes,
-        transmissionEdges=framework.transmissionEdges,
-        charts=data.charts,
-        evidence=[
-            *framework.evidence[:3],
-            *data.evidence,
-            *framework.evidence[3:],
-            *synthesis.evidence,
-            *skeptic.evidence,
-        ],
-        bullCase=synthesis.bullCase,
-        bearCase=skeptic.bearCase,
-        memo=synthesis.memo,
-        openQuestions=skeptic.openQuestions,
+
+def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
+    selected_case = _CASE_RUNS[route_question(request.question)]
+    display_question = request.question.strip() or selected_case.question
+
+    return selected_case.model_copy(
+        deep=True,
+        update={"question": display_question},
     )

@@ -32,6 +32,7 @@ export function ResearchDashboard() {
     useState<ResearchDataSource>("Frontend fallback");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const caseDisplay = getCaseDisplay(run);
 
   const handleRun = useCallback(async () => {
     setIsLoading(true);
@@ -108,7 +109,7 @@ export function ResearchDashboard() {
             <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{run.scenario}</Badge>
-                <Badge variant="inference">Monetary transmission</Badge>
+                <Badge variant="inference">{caseDisplay.framework}</Badge>
               </div>
               <h2 className="mt-4 max-w-5xl text-3xl font-semibold leading-tight tracking-normal text-zinc-50 md:text-5xl">
                 {run.headline}
@@ -119,7 +120,11 @@ export function ResearchDashboard() {
             </div>
             <MetricStrip metrics={run.metrics} />
           </div>
-          <DriverPanel drivers={run.keyDrivers} />
+          <DriverPanel
+            drivers={run.keyDrivers}
+            label={caseDisplay.driverLabel}
+            description={caseDisplay.driverDescription}
+          />
         </section>
 
         <ResearchJudgmentCard
@@ -130,6 +135,7 @@ export function ResearchDashboard() {
         <TransmissionMap
           nodes={run.transmissionNodes}
           edges={run.transmissionEdges}
+          description={caseDisplay.mapDescription}
         />
 
         <section className="grid gap-4 xl:grid-cols-[1fr_380px]">
@@ -148,6 +154,39 @@ export function ResearchDashboard() {
       </div>
     </main>
   );
+}
+
+function getCaseDisplay(run: DemoResearchRun) {
+  if (run.scenario.includes("Oil shock")) {
+    return {
+      framework: "Input-cost shock",
+      driverLabel: "Airlines",
+      driverDescription:
+        "The prototype reasons over a structured airline driver list instead of presenting a free-form assistant answer.",
+      mapDescription:
+        "The primary research artifact: how oil and demand shocks move through fuel costs, fare elasticity, utilization, capacity, and cash flow.",
+    };
+  }
+
+  if (run.scenario.includes("AI infrastructure")) {
+    return {
+      framework: "Industry cycle",
+      driverLabel: "Semis / cloud",
+      driverDescription:
+        "The prototype reasons over a structured semiconductor and hyperscaler driver list instead of presenting a free-form assistant answer.",
+      mapDescription:
+        "The primary research artifact: how AI capex moves through supplier demand, hyperscaler budgets, ROI proof, and valuation expectations.",
+    };
+  }
+
+  return {
+    framework: "Monetary transmission",
+    driverLabel: "Banks",
+    driverDescription:
+      "The prototype reasons over a structured bank driver list instead of presenting a free-form assistant answer.",
+    mapDescription:
+      "The primary research artifact: how rate cuts move through bank balance-sheet mechanics, credit quality, provisions, and valuation.",
+  };
 }
 
 function HeaderStat({
@@ -202,7 +241,15 @@ function MetricStrip({
   );
 }
 
-function DriverPanel({ drivers }: { drivers: string[] }) {
+function DriverPanel({
+  drivers,
+  label,
+  description,
+}: {
+  drivers: string[];
+  label: string;
+  description: string;
+}) {
   return (
     <div className="rounded-lg border border-white/10 bg-zinc-950/70 p-5">
       <div className="flex items-center justify-between gap-3">
@@ -210,7 +257,7 @@ function DriverPanel({ drivers }: { drivers: string[] }) {
           <BarChart3 className="size-4 text-cyan-300" />
           Sector driver map
         </div>
-        <Badge variant="secondary">Banks</Badge>
+        <Badge variant="secondary">{label}</Badge>
       </div>
       <div className="mt-4 grid gap-2">
         {drivers.map((driver, index) => (
@@ -226,8 +273,7 @@ function DriverPanel({ drivers }: { drivers: string[] }) {
         ))}
       </div>
       <p className="mt-4 text-sm leading-6 text-muted-foreground">
-        The prototype reasons over a structured bank driver list instead of
-        presenting a free-form assistant answer.
+        {description}
       </p>
     </div>
   );
