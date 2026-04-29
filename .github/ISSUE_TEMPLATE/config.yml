@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ResearchOS live frontend
+    url: https://research-os-rust.vercel.app
+    about: Use this to manually verify the deployed frontend.
+  - name: ResearchOS live backend health
+    url: https://researchos-api.onrender.com/health
+    about: Use this to verify the deployed backend health endpoint.

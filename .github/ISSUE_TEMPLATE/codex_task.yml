@@ -1,0 +1,170 @@
+name: Codex Task
+description: Create a scoped implementation task for Codex
+title: "[Codex]: "
+labels:
+  - codex
+  - needs-implementation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for small, reviewable Codex implementation tasks.
+
+        Keep tasks scoped. Do not combine unrelated backend, frontend, deployment, and documentation work unless explicitly intended.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should Codex implement?
+      placeholder: "Example: Add fixture-based tests for the Bank of Canada data client."
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Relevant project context, links, PRs, files, or decisions.
+      placeholder: "Include related PRs, branches, docs, or behavior that must be preserved."
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What should Codex avoid doing?
+      placeholder: |
+        - Do not change the frontend.
+        - Do not change /research/run schema.
+        - Do not add new dependencies.
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely involved
+      description: List expected files or directories.
+      placeholder: |
+        - backend/app/orchestrator.py
+        - backend/app/data_sources/...
+        - backend/tests/...
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Product constraints
+      description: Constraints that must be preserved.
+      value: |
+        - Do not add buy/sell recommendations.
+        - Do not add price targets.
+        - Do not imply personalized investment advice.
+        - Preserve deterministic fallback behavior.
+        - Preserve evidence labels exactly:
+          - Data
+          - Source claim
+          - Framework inference
+          - Narrative signal
+          - Open question
+        - Avoid changing `/research/run` response schema unless explicitly required.
+        - Avoid frontend changes unless explicitly required.
+        - Do not rely on live external APIs for app correctness.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: What must be true for this task to be accepted?
+      placeholder: |
+        - New behavior is implemented.
+        - Existing golden-path demos still work.
+        - Tests cover success and fallback paths.
+        - No frontend files changed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: required_checks
+    attributes:
+      label: Required checks
+      description: Commands Codex should run.
+      value: |
+        - `git diff --check`
+        - `cd backend && python3 -m compileall app`
+        - `cd backend && python3 -m unittest discover -s tests` if `backend/tests` exists
+        - Run frontend commands only if frontend files changed and the scripts exist in `package.json`
+    validations:
+      required: true
+
+  - type: textarea
+    id: manual_verification
+    attributes:
+      label: Manual verification
+      description: Manual checks, screenshots, preview URLs, or smoke tests expected.
+      placeholder: |
+        - Verify `/health`.
+        - Verify `/research/run` for the three golden-path demos.
+        - Verify unknown/custom question fallback.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend
+        - Frontend
+        - Docs
+        - Deployment
+        - Data source
+        - Workflow
+        - Mixed
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Known risks or edge cases
+      description: What could go wrong?
+      placeholder: |
+        - External API may fail.
+        - Render may behave differently than local.
+        - Frontend/backend schema mismatch risk.
+    validations:
+      required: false
+
+  - type: textarea
+    id: codex_instructions
+    attributes:
+      label: Codex instructions
+      description: Specific implementation instructions to include in the prompt.
+      value: |
+        - Read `AGENTS.md` before changing files.
+        - Create or use the requested branch.
+        - Do not push to `main`.
+        - Keep the PR scoped to this task.
+        - Commit changes.
+        - Push the branch.
+        - Open a PR against `main`.
+        - Report PR link, branch, commit SHA, files changed, checks run, and known issues.
+    validations:
+      required: true
