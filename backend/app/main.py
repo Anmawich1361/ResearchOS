@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.data_sources import get_policy_rate_status
 from app.orchestrator import run_research_pipeline
 from app.schemas import ResearchRun, ResearchRunRequest
 
@@ -45,6 +46,11 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/research/data-status")
+def research_data_status() -> dict[str, object]:
+    return {"bankOfCanadaPolicyRate": get_policy_rate_status()}
 
 
 @app.post(
