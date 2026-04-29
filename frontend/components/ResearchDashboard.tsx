@@ -14,6 +14,10 @@ import {
 import { AgentTimeline } from "@/components/AgentTimeline";
 import { BullBearPanel } from "@/components/BullBearPanel";
 import { DataChartPanel } from "@/components/DataChartPanel";
+import {
+  DemoCaseSelector,
+  type DemoCaseId,
+} from "@/components/DemoCaseSelector";
 import { EvidenceBoard } from "@/components/EvidenceBoard";
 import { MemoViewer } from "@/components/MemoViewer";
 import { OpenQuestions } from "@/components/OpenQuestions";
@@ -34,12 +38,13 @@ export function ResearchDashboard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const caseDisplay = getCaseDisplay(run);
 
-  const handleRun = useCallback(async () => {
+  const runQuestion = useCallback(async (nextQuestion: string) => {
     setIsLoading(true);
     setErrorMessage(null);
+    setQuestion(nextQuestion);
 
     try {
-      const backendRun = await runResearch(question);
+      const backendRun = await runResearch(nextQuestion);
       setRun(backendRun);
       setQuestion(backendRun.question);
       setDataSource("Backend response");
@@ -51,7 +56,18 @@ export function ResearchDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [question]);
+  }, []);
+
+  const handleRun = useCallback(() => {
+    void runQuestion(question);
+  }, [question, runQuestion]);
+
+  const handlePresetSelect = useCallback(
+    (presetQuestion: string) => {
+      void runQuestion(presetQuestion);
+    },
+    [runQuestion],
+  );
 
   return (
     <main className="min-h-screen overflow-hidden bg-background text-foreground">
@@ -102,6 +118,12 @@ export function ResearchDashboard() {
           errorMessage={errorMessage}
           onQuestionChange={setQuestion}
           onRun={handleRun}
+        />
+
+        <DemoCaseSelector
+          activeCaseId={caseDisplay.caseId}
+          isLoading={isLoading}
+          onSelect={handlePresetSelect}
         />
 
         <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
@@ -159,6 +181,7 @@ export function ResearchDashboard() {
 function getCaseDisplay(run: DemoResearchRun) {
   if (run.scenario.includes("Oil shock")) {
     return {
+      caseId: "oil-airlines" as DemoCaseId,
       framework: "Input-cost shock",
       driverLabel: "Airlines",
       driverDescription:
@@ -170,6 +193,7 @@ function getCaseDisplay(run: DemoResearchRun) {
 
   if (run.scenario.includes("AI infrastructure")) {
     return {
+      caseId: "ai-capex" as DemoCaseId,
       framework: "Industry cycle",
       driverLabel: "Semis / cloud",
       driverDescription:
@@ -180,6 +204,7 @@ function getCaseDisplay(run: DemoResearchRun) {
   }
 
   return {
+    caseId: "canadian-banks" as DemoCaseId,
     framework: "Monetary transmission",
     driverLabel: "Banks",
     driverDescription:
