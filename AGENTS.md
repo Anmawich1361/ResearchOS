@@ -7,6 +7,7 @@ ResearchOS / Financial Research OS is an agentic financial research workbench an
 It helps users understand how a macro, policy, industry, or narrative shock flows into sector/company fundamentals and valuation drivers.
 
 It is not:
+
 - a stock picker
 - a trading terminal
 - an investment-advice product
@@ -46,13 +47,11 @@ Repo structure:
   - shadcn-style components
   - React Flow
   - Recharts
-
 - `backend/`
   - Python
   - FastAPI
   - Pydantic
   - Uvicorn
-
 - `docs/`
   - Deployment notes
   - Workflow notes
@@ -84,7 +83,7 @@ Before changing backend behavior:
 1. Read `README.md`.
 2. Read `backend/README.md` if it exists.
 3. Inspect `backend/app/orchestrator.py`.
-4. Inspect `backend/app/schemas.py`.
+4. Inspect `backend/app/schemas.py` or `backend/app/schemas/`, depending on the current schema layout.
 5. Inspect existing tests before adding new ones.
 
 Use standard-library Python where reasonable.
@@ -96,7 +95,7 @@ For external data clients:
 - Use timeouts.
 - Avoid disabling TLS verification.
 - Cache successful responses when appropriate.
-- Add failure cooldown/backoff when appropriate.
+- Add failure cooldown or backoff when appropriate.
 - Return deterministic fallback data when live data fails.
 - Add fixture-based tests.
 - Do not require live network access for tests.
@@ -117,17 +116,8 @@ Run a backend orchestrator smoke test that covers all golden paths plus an unkno
 
 ```bash
 cd backend && python3 - <<'PY'
-try:
-    from app.orchestrator import run_research_pipeline
-
-    def execute(question: str):
-        return run_research_pipeline(question)
-except ModuleNotFoundError:
-    from app.main import run_research
-    from app.schemas import ResearchRunRequest
-
-    def execute(question: str):
-        return run_research(ResearchRunRequest(question=question))
+from app.orchestrator import run_research_pipeline
+from app.schemas import ResearchRunRequest
 
 questions = [
     "How would rate cuts affect Canadian banks?",
@@ -145,19 +135,20 @@ allowed_evidence_labels = {
 }
 
 for question in questions:
-    result = execute(question)
-    payload = result.model_dump() if hasattr(result, "model_dump") else result.dict()
-    assert payload["question"]
-    assert payload["transmissionNodes"]
-    assert payload["evidence"]
-    for item in payload["evidence"]:
-        assert item["type"] in allowed_evidence_labels, item["type"]
+    run = run_research_pipeline(ResearchRunRequest(question=question))
+    assert run.question == question
+    assert run.transmissionNodes
+    assert run.charts
+    assert run.evidence
+
+    for item in run.evidence:
+        assert item.type in allowed_evidence_labels, item.type
 
 print("backend orchestrator smoke test passed")
 PY
 ```
 
-Always run the whitespace/conflict-marker check before committing:
+Always run the whitespace and conflict-marker check before committing:
 
 ```bash
 git diff --check
@@ -216,7 +207,7 @@ When finishing a change, report:
 - checks run
 - known issues or blockers
 
-For documentation-only changes, explicitly state that no backend or frontend runtime behavior was changed.
+For documentation-only changes, explicitly state that no backend or frontend runtime behavior changed.
 
 ## Review checklist
 
@@ -230,7 +221,7 @@ Before asking for review, confirm:
 - Unknown/custom-question fallback behavior was not removed or weakened.
 - Live API failures cannot break app correctness.
 - Required checks were run, or blockers were reported with exact errors.
-- Documentation does not contain stale PR numbers, temporary SHAs, or local-only assumptions.
+- Documentation does not contain stale PR numbers, temporary SHAs, local-only assumptions, or hidden formatting characters.
 
 ## Definition of done
 
