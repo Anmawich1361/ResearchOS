@@ -22,6 +22,35 @@ Month-one goal: a beautiful, focused macro-transmission research demo.
 
 ---
 
+## Live deployment
+
+- Frontend: https://research-os-rust.vercel.app
+- Backend API: https://researchos-api.onrender.com
+- Backend health: https://researchos-api.onrender.com/health
+
+The deployed app uses deterministic hardcoded demo data. It is not investment
+advice, a live-data analysis system, or a source of buy/sell recommendations.
+
+---
+
+## Live demo script
+
+1. Open https://research-os-rust.vercel.app and point out the visible research
+   workflow: question input, demo selector, agents, transmission map, evidence,
+   bull/bear framing, and memo.
+2. Click **Rate cuts / Canadian banks** and describe the monetary-transmission
+   tradeoff: credit relief versus NII, provisions, and valuation sensitivity.
+3. Click **Oil shock / Airlines** and show how a fuel-cost shock combines with
+   weaker consumer demand, load-factor risk, and operating leverage.
+4. Click **AI capex / Semis / hyperscalers** and frame the debate as supplier
+   tailwinds versus hyperscaler ROI and free-cash-flow pressure.
+5. Mention that custom questions can still be typed, but unknown questions
+   intentionally fall back to the Canadian banks golden path for demo reliability.
+6. Close by noting that all outputs are deterministic demo artifacts with strict
+   evidence labels, not live market data or investment recommendations.
+
+---
+
 ## Core user workflow
 
 The user enters a question such as:

@@ -100,7 +100,7 @@ export function ResearchDashboard() {
                 isLoading
                   ? "Calling"
                   : dataSource === "Backend response"
-                    ? "Local API"
+                    ? "Live API"
                     : "Fallback"
               }
             />
