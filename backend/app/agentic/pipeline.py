@@ -98,6 +98,7 @@ def run_agentic_research_pipeline(
             request,
             planner,
             source_research,
+            resolved_config,
         )
         current_stage = "skeptic"
         skeptic = _run_skeptic_stage(
@@ -115,6 +116,7 @@ def run_agentic_research_pipeline(
             source_research,
             framework,
             skeptic,
+            resolved_config,
         )
         current_stage = "normalization"
         run = normalize_agentic_research_run(
@@ -170,6 +172,10 @@ def _run_source_stage(
         input_data={
             "question": request.question,
             "planner": planner.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "sourceMode": (
+                "web_search" if config.web_search_enabled else "framework_only"
+            ),
         },
         allow_web_search=config.web_search_enabled,
     )
@@ -181,6 +187,7 @@ def _run_framework_stage(
     request: ResearchRunRequest,
     planner: PlannerStageResult,
     source_research: SourceResearchResult,
+    config: AgenticResearchConfig,
 ) -> FrameworkStageResult:
     payload = client.create_structured_response(
         stage_name="agentic_framework",
@@ -190,6 +197,12 @@ def _run_framework_stage(
             "question": request.question,
             "planner": planner.model_dump(),
             "sourceResearch": source_research.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
     return _validate_stage(FrameworkStageResult, payload, "framework")
@@ -211,6 +224,11 @@ def _run_skeptic_stage(
             "planner": planner.model_dump(),
             "sourceResearch": source_research.model_dump(),
             "framework": framework.model_dump(),
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
     return _validate_stage(SkepticStageResult, payload, "skeptic")
@@ -223,6 +241,7 @@ def _run_synthesis_stage(
     source_research: SourceResearchResult,
     framework: FrameworkStageResult,
     skeptic: SkepticStageResult,
+    config: AgenticResearchConfig,
 ) -> dict[str, Any]:
     return client.create_structured_response(
         stage_name="agentic_synthesis",
@@ -234,6 +253,12 @@ def _run_synthesis_stage(
             "sourceResearch": source_research.model_dump(),
             "framework": framework.model_dump(),
             "skeptic": skeptic.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
 

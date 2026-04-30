@@ -12,6 +12,7 @@ cleanup() {
 trap cleanup EXIT
 
 STATUS_JSON="$TMP_DIR/agentic-status.json"
+STATUS_AFTER_JSON="$TMP_DIR/agentic-status-after.json"
 RUN_JSON="$TMP_DIR/agentic-run.json"
 
 printf 'Checking %s/research/agentic-status\n' "$API_BASE"
@@ -35,17 +36,30 @@ fi
 cat "$RUN_JSON"
 printf '\n\n'
 
-python3 - "$RUN_JSON" <<'PY'
+if ! curl -sS --fail --max-time 20 "$API_BASE/research/agentic-status" \
+  > "$STATUS_AFTER_JSON"; then
+  printf 'post-run agentic-status request failed\n' >&2
+  exit 1
+fi
+
+python3 - "$RUN_JSON" "$STATUS_AFTER_JSON" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], "r", encoding="utf-8") as handle:
-    payload = json.load(handle)
+    run_payload = json.load(handle)
+with open(sys.argv[2], "r", encoding="utf-8") as handle:
+    status_payload = json.load(handle)
 
-scenario = payload.get("scenario")
+scenario = run_payload.get("scenario")
 if scenario == "Bank of Canada easing cycle":
     print("Result appears to be deterministic fallback.")
-    print("Inspect backend logs for agentic fallback stage and reason.")
 else:
     print(f"Result scenario: {scenario}")
+
+last_succeeded_at = status_payload.get("lastSucceededAt")
+print(f"lastFallbackStage={status_payload.get('lastFallbackStage')}")
+print(f"lastFallbackReason={status_payload.get('lastFallbackReason')}")
+print(f"lastErrorType={status_payload.get('lastErrorType')}")
+print(f"lastSucceededAtPresent={last_succeeded_at is not None}")
 PY

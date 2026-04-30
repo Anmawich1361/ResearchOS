@@ -48,6 +48,10 @@ The stages classify the question, gather compact source notes when configured,
 build a macro-transmission map, challenge the thesis, and normalize the result
 into the existing `ResearchRun` schema.
 
+When web search is disabled, the source stage stays in framework-only mode: it
+may produce compact context notes and open questions, but it must not claim live
+source verification or use `Data` evidence.
+
 The output must preserve the exact evidence labels:
 
 - Data
@@ -128,6 +132,9 @@ inspect backend logs for the concise agentic fallback `stage` and `reason`.
 The status endpoint also exposes safe last-run fields such as
 `lastFallbackReason`, `lastFallbackStage`, `lastRunAt`, `lastSucceededAt`, and
 `lastErrorType`.
+`scripts/debug_agentic_local.sh` prints these fields after a local smoke test so
+stage-specific fallback reasons can be checked without exposing prompts,
+responses, or secrets.
 
 A direct OpenAI Responses API call succeeding only confirms basic credentials
 and model access. The staged ResearchOS pipeline can still fall back if the
