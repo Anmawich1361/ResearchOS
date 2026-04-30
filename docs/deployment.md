@@ -103,3 +103,12 @@ curl https://<render-backend-host>/research/data-status
 ```
 
 Then open the Vercel frontend and run one of the golden-path demo questions.
+
+For the full deployed API verification flow, run:
+
+```bash
+./scripts/verify_research_api.sh https://<render-backend-host>
+```
+
+The canonical Bank of Canada marker checklist is in
+`docs/boc-verification.md`.

@@ -26,3 +26,6 @@ Canadian banks demo may replace the policy-rate chart with official Bank of
 Canada Valet API data when available, and otherwise falls back to deterministic
 demo data. There are no OpenAI, FRED, SEC, database, auth, or live market-data
 integrations.
+
+Use `../docs/boc-verification.md` for deployment checks. It documents the exact
+`Bank of Canada Valet API` marker and the deterministic fallback behavior.

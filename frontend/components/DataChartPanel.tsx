@@ -16,6 +16,7 @@ import { Activity } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BANK_OF_CANADA_VALET_MARKER } from "@/lib/sourceMarkers";
 import type { ChartSeries } from "@/lib/types";
 
 const chartColor: Record<ChartSeries["tone"], string> = {
@@ -39,6 +40,9 @@ export function DataChartPanel({ charts }: DataChartPanelProps) {
     getClientSnapshot,
     getServerSnapshot,
   );
+  const hasOfficialBocChart = charts.some((chart) =>
+    chart.subtitle.includes(BANK_OF_CANADA_VALET_MARKER),
+  );
 
   return (
     <Card className="bg-zinc-950/70">
@@ -48,7 +52,11 @@ export function DataChartPanel({ charts }: DataChartPanelProps) {
             <Activity className="size-4 text-cyan-300" />
             Data cards
           </CardTitle>
-          <Badge variant="outline">Placeholder series</Badge>
+          <Badge variant={hasOfficialBocChart ? "data" : "outline"}>
+            {hasOfficialBocChart
+              ? "Official source labeled"
+              : "Deterministic demo series"}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -56,6 +64,9 @@ export function DataChartPanel({ charts }: DataChartPanelProps) {
           {charts.map((chart, index) => {
             const color = chartColor[chart.tone];
             const Chart = index % 2 === 0 ? AreaChart : LineChart;
+            const isOfficialBocChart = chart.subtitle.includes(
+              BANK_OF_CANADA_VALET_MARKER,
+            );
 
             return (
               <div
@@ -71,9 +82,16 @@ export function DataChartPanel({ charts }: DataChartPanelProps) {
                       {chart.subtitle}
                     </div>
                   </div>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {chart.unit}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {chart.unit}
+                    </span>
+                    {isOfficialBocChart ? (
+                      <Badge variant="data" title={BANK_OF_CANADA_VALET_MARKER}>
+                        Official BoC
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="mt-3 h-32">
                   {mounted ? (

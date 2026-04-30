@@ -550,7 +550,7 @@ export const demoResearchRun: DemoResearchRun = {
     },
     {
       title: "Evidence standard",
-      body: "This prototype labels claims as data, framework inference, narrative signal, or open question and now includes source-readiness fields. It does not present price targets, buy/sell calls, live data, or unsupported company-specific conclusions.",
+      body: "This prototype labels claims as Data, Source claim, Framework inference, Narrative signal, or Open question and includes source-readiness fields. It does not present price targets, buy/sell calls, or unsupported company-specific conclusions. Official source-backed data may appear where explicitly labeled and falls back to deterministic demo data when unavailable.",
     },
   ],
   openQuestions: [

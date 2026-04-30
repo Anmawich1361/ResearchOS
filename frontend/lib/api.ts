@@ -1,4 +1,4 @@
-import type { DemoResearchRun } from "@/lib/types";
+import type { DemoResearchRun, ResearchDataStatus } from "@/lib/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -17,4 +17,16 @@ export async function runResearch(question: string): Promise<DemoResearchRun> {
   }
 
   return response.json() as Promise<DemoResearchRun>;
+}
+
+export async function getResearchDataStatus(): Promise<ResearchDataStatus> {
+  const response = await fetch(`${API_BASE_URL}/research/data-status`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Research data status request failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<ResearchDataStatus>;
 }

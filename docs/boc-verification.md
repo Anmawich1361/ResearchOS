@@ -57,8 +57,27 @@ Look for `lastResult`:
 - `cached`: a fresh in-memory cache entry is being reused.
 - `fallback`: the official source was unavailable or invalid, so the app used
   deterministic fallback behavior.
+- `cooldown`: a recent official-source failure is still inside the short
+  retry cooldown, so deterministic fallback remains active.
 - `not_requested`: no eligible Canadian-bank policy-rate request has attempted
   the data source since the service started.
+
+The status may also include `failureCooldownSeconds`, `inFailureCooldown`, and
+`nextRetryAt` to make retry behavior easier to verify without exposing raw
+payloads or tracebacks.
+
+## Verification Script
+
+Run the bundled script to check health, data-source status, golden-path routes,
+unknown fallback, and mixed-prompt marker leakage:
+
+```bash
+./scripts/verify_research_api.sh "$API_BASE"
+```
+
+The script exits nonzero for real API failures or unexpected marker leakage. It
+does not fail only because the Canadian banks question used deterministic
+fallback instead of official Bank of Canada data.
 
 ## Response Checks
 

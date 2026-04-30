@@ -34,6 +34,12 @@ available, and otherwise falls back to deterministic demo data. ResearchOS is
 not investment advice, a live market-data terminal, or a source of buy/sell
 recommendations.
 
+For deployed source checks, see `docs/boc-verification.md` or run:
+
+```bash
+./scripts/verify_research_api.sh
+```
+
 ---
 
 ## Live demo script
