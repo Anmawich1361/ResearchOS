@@ -57,13 +57,32 @@ class AgenticSafetyTest(unittest.TestCase):
         prompts = [
             "How much of my portfolio should I put in Nvidia?",
             "What portfolio allocation should I use for Canadian banks?",
+            "What allocation should I use in my portfolio for Canadian banks?",
+            "What percent of my portfolio should be in banks?",
             "How large should my position be in Tesla?",
             "Should I overweight or underweight RY in my portfolio?",
+            "Should I allocate 20% of my portfolio to Nvidia?",
         ]
 
         for prompt in prompts:
             with self.subTest(prompt=prompt):
                 self.assertTrue(contains_forbidden_research_intent(prompt))
+
+    def test_research_intent_helper_allows_analytical_allocation_prompts(
+        self,
+    ) -> None:
+        prompts = [
+            "What allocation should I use across business drivers?",
+            "How should allocation shift across capex buckets?",
+            "How should management allocate capital between buybacks and R&D?",
+            "What capital allocation choices matter for semiconductors?",
+            "How should research time be allocated across valuation drivers?",
+            "Analyze capital allocation tradeoffs without portfolio advice.",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertFalse(contains_forbidden_research_intent(prompt))
 
     def test_research_intent_helper_allows_safe_disclaimers(self) -> None:
         disclaimers = [

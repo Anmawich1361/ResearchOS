@@ -105,7 +105,27 @@ FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
         re.I,
     ),
     re.compile(
-        r"\bwhat\s+(?:portfolio\s+)?allocation\s+should\s+i\s+use\b",
+        r"\bwhat\s+portfolio\s+allocation\s+should\s+i\s+use\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwhat\s+allocation\s+should\s+i\s+use\b.*\bmy\s+portfolio\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwhat\s+(?:percent|percentage|%)\s+of\s+my\s+portfolio\s+"
+        r"should\s+(?:be|i\s+(?:put|allocate|invest))\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bshould\s+i\s+allocate\s+"
+        r"(?:\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?\s+percent)\s+"
+        r"of\s+my\s+portfolio\b",
+        re.I,
+    ),
+    re.compile(
+        r"\b(?:tfsa|rrsp|ira|401k|401\(k\)|investment account)\b.*"
+        r"\b(?:allocate|allocation|position|overweight|underweight)\b",
         re.I,
     ),
     re.compile(

@@ -11,6 +11,7 @@ from app.agentic.evals import (
     VALID_MACRO_TRANSMISSION_CASES,
 )
 from app.agentic.pipeline import run_agentic_research_pipeline
+from app.agentic.safety import contains_forbidden_research_intent
 from app.demo_cases import CANADIAN_BANKS_RESEARCH_RUN
 from app.orchestrator import run_research_pipeline
 from app.schemas import ResearchRun, ResearchRunRequest
@@ -57,6 +58,22 @@ class AgenticEvalHarnessTest(unittest.TestCase):
                     run.scenario,
                     CANADIAN_BANKS_RESEARCH_RUN.scenario,
                 )
+
+    def test_non_personal_allocation_prompts_are_not_preflight_blocked(
+        self,
+    ) -> None:
+        prompts = [
+            "What allocation should I use across business drivers?",
+            "How should allocation shift across capex buckets?",
+            "How should management allocate capital between buybacks and R&D?",
+            "What capital allocation choices matter for semiconductors?",
+            "How should research time be allocated across valuation drivers?",
+            "Analyze capital allocation tradeoffs without portfolio advice.",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertFalse(contains_forbidden_research_intent(prompt))
 
     def test_valid_macro_prompts_enter_mocked_agentic_path(self) -> None:
         for case in VALID_MACRO_TRANSMISSION_CASES:
