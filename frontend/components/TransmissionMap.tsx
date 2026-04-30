@@ -53,17 +53,16 @@ const legendItems: Array<{
 
 const mapReadingAidItems = [
   {
-    label: "Shock / driver nodes",
-    description: "Transmission points in the shock-to-fundamentals chain.",
+    label: "Nodes",
+    description: "transmission points in the shock-to-fundamentals chain",
   },
   {
-    label: "Directional links",
-    description: "Pressure paths between connected drivers.",
+    label: "Links",
+    description: "directional pressure paths",
   },
   {
-    label: "Mechanism tracing",
-    description:
-      "Inspect how a shock may move; not a price forecast or trading signal.",
+    label: "Use",
+    description: "mechanism tracing, not a price forecast or trading signal",
   },
 ];
 
@@ -209,13 +208,13 @@ export function TransmissionMap({
             ))}
           </div>
         </div>
-        <div className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 md:grid-cols-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-muted-foreground">
           {mapReadingAidItems.map((item) => (
-            <div key={item.label} className="min-w-0">
-              <Badge variant="outline">{item.label}</Badge>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {item.description}
-              </p>
+            <div key={item.label} className="flex min-w-0 items-center gap-2">
+              <Badge variant="outline" className="shrink-0">
+                {item.label}
+              </Badge>
+              <span>{item.description}</span>
             </div>
           ))}
         </div>
@@ -284,10 +283,6 @@ export function TransmissionMap({
                   </div>
                 </div>
               ) : null}
-            </div>
-            <div className="rounded-md border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-5 text-amber-50">
-              The map shows directional research logic, not a recommendation or
-              price target.
             </div>
           </aside>
         </div>
