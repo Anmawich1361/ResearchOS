@@ -31,6 +31,10 @@ produce complete structured JSON.
 Do not expose `OPENAI_API_KEY` to the frontend. Use `/research/agentic-status`
 to inspect capability status without exposing secrets.
 
+The backend uses the official OpenAI Python SDK for the configured agentic
+request path. OpenAI request failures are converted to safe fallback reason
+codes, and the deterministic demo path remains the app-correctness fallback.
+
 ## Workflow
 
 The backend runs explicit Python orchestration:
