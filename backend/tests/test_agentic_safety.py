@@ -1,10 +1,45 @@
 import unittest
 
-from app.agentic.safety import validate_agentic_research_run
+from app.agentic.safety import (
+    contains_forbidden_advisory_intent,
+    validate_agentic_research_run,
+)
 from app.demo_cases import CANADIAN_BANKS_RESEARCH_RUN
 
 
 class AgenticSafetyTest(unittest.TestCase):
+    def test_advisory_intent_helper_detects_direct_prompts(self) -> None:
+        prompts = [
+            "Should I buy Nvidia?",
+            "Should we sell Canadian banks?",
+            "Should I hold Apple?",
+            "Should I short Tesla?",
+            "Should I accumulate Microsoft?",
+            "Should investors buy Nvidia?",
+            "Would you buy the stock?",
+            "Would you sell the stock?",
+            "Do you recommend buying the shares?",
+            "Do you recommend selling the shares?",
+            "Is Nvidia a buy?",
+            "Is Nvidia a sell?",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertTrue(contains_forbidden_advisory_intent(prompt))
+
+    def test_advisory_intent_helper_allows_safe_disclaimers(self) -> None:
+        disclaimers = [
+            "This is not a buy/sell recommendation.",
+            "No buy/sell recommendations are provided.",
+        ]
+
+        for disclaimer in disclaimers:
+            with self.subTest(disclaimer=disclaimer):
+                self.assertFalse(
+                    contains_forbidden_advisory_intent(disclaimer)
+                )
+
     def test_safe_disclaimer_does_not_trigger_recommendation_failure(
         self,
     ) -> None:

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from app.agentic.config import AgenticResearchConfig
 from app.agentic.pipeline import run_agentic_research_pipeline
@@ -28,6 +29,19 @@ class AgenticPipelineTest(unittest.TestCase):
         )
 
         self.assertEqual(run.question, CUSTOM_QUESTION)
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+
+    def test_advisory_question_falls_back_before_openai_client(self) -> None:
+        with patch(
+            "app.agentic.pipeline.OpenAIResearchClient"
+        ) as research_client:
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question="Should I buy Nvidia?"),
+                config=_config(enabled=True, api_key="test-openai-key"),
+            )
+
+        research_client.assert_not_called()
+        self.assertEqual(run.question, "Should I buy Nvidia?")
         self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
 
     def test_mocked_valid_agentic_output_returns_research_run(self) -> None:

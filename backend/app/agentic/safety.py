@@ -22,14 +22,40 @@ SAFE_DISCLAIMER_PATTERNS = [
     re.compile(r"\bnot investment advice\b", re.I),
 ]
 
-FORBIDDEN_PATTERNS = [
-    re.compile(r"\bstrong\s+(buy|sell)\b", re.I),
+FORBIDDEN_ADVISORY_INTENT_PATTERNS = [
     re.compile(
-        r"\b(we|you|investors?)\s+should\s+"
+        r"\bshould\s+(i|we|you|investors?)\s+"
         r"(buy|sell|hold|short|accumulate)\b",
         re.I,
     ),
-    re.compile(r"\brecommend(?:ed|s)?\s+(buying|selling|shorting)\b", re.I),
+    re.compile(
+        r"\b(i|we|you|investors?)\s+should\s+"
+        r"(buy|sell|hold|short|accumulate)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwould\s+you\s+(buy|sell|hold|short|accumulate)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bdo\s+you\s+recommend\s+"
+        r"(buying|selling|holding|shorting|accumulating)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\brecommend(?:ed|s)?\s+"
+        r"(buying|selling|holding|shorting|accumulating)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bis\s+.{1,80}?\s+(a|an)\s+"
+        r"(buy|sell|hold|short|accumulate)\b",
+        re.I,
+    ),
+]
+
+FORBIDDEN_PATTERNS = [
+    re.compile(r"\bstrong\s+(buy|sell)\b", re.I),
     re.compile(r"\b(buy|sell|hold)\s+(the\s+)?(stock|shares|equity)\b", re.I),
     re.compile(r"\brate[sd]?\s+.*\b(a\s+)?(buy|sell|hold)\b", re.I),
     re.compile(r"\b(price target|target price)\b", re.I),
@@ -61,6 +87,14 @@ FABRICATED_SOURCE_LABELS = {
 class SafetyResult:
     passed: bool
     reasons: tuple[str, ...] = ()
+
+
+def contains_forbidden_advisory_intent(text: str) -> bool:
+    safe_text = _safe_text_blob([text])
+    return any(
+        pattern.search(safe_text)
+        for pattern in FORBIDDEN_ADVISORY_INTENT_PATTERNS
+    )
 
 
 def validate_agentic_research_run(
@@ -98,10 +132,15 @@ def validate_agentic_research_run(
         reasons.append("node evidence label drift")
 
     text_blob = _safe_text_blob(_iter_run_text(run))
-    for pattern in FORBIDDEN_PATTERNS:
-        if pattern.search(text_blob):
-            reasons.append("forbidden recommendation or price-target language")
-            break
+    if contains_forbidden_advisory_intent(text_blob):
+        reasons.append("forbidden recommendation or price-target language")
+    else:
+        for pattern in FORBIDDEN_PATTERNS:
+            if pattern.search(text_blob):
+                reasons.append(
+                    "forbidden recommendation or price-target language"
+                )
+                break
 
     for item in run.evidence:
         if item.type != "Data":
