@@ -1,3 +1,4 @@
+from dataclasses import fields
 import unittest
 from unittest.mock import patch
 
@@ -198,14 +199,30 @@ class _FakeClient:
 def _run_agentic(prompt: str, *, client: _FakeClient | None = None) -> ResearchRun:
     return run_agentic_research_pipeline(
         ResearchRunRequest(question=prompt),
-        config=AgenticResearchConfig(
-            enabled=True,
-            api_key="test-openai-key",
-            model="gpt-5.4-mini",
-            web_search_enabled=False,
-            timeout_seconds=1.0,
-        ),
+        config=_make_agentic_config(),
         client=client,
+    )
+
+
+def _make_agentic_config(**overrides: object) -> AgenticResearchConfig:
+    values: dict[str, object] = {
+        "enabled": True,
+        "api_key": "test-openai-key",
+        "model": "gpt-5.4-mini",
+        "web_search_enabled": False,
+        "timeout_seconds": 1.0,
+        "max_output_tokens": 8000,
+        "reasoning_effort": "minimal",
+    }
+    values.update(overrides)
+
+    config_fields = {field.name for field in fields(AgenticResearchConfig)}
+    return AgenticResearchConfig(
+        **{
+            name: value
+            for name, value in values.items()
+            if name in config_fields
+        }
     )
 
 
