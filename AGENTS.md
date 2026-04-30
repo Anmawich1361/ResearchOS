@@ -75,6 +75,55 @@ For meaningful product or architecture changes, update the relevant strategy
 docs or add a reflection-log entry. Do not require reflection-log updates for
 tiny typo fixes or narrow docs-only PRs.
 
+## Parallel Codex session coordination
+
+Before implementation work that may overlap another Codex session, read
+`docs/codex-app-worktrees.md`. Use one task, one branch, one worktree, and one
+PR. Keep implementation PRs small and avoid touching files owned by another
+active session unless explicit coordination happened first.
+
+Before overlapping implementation work begins, report this status block in the
+task thread, issue, PR, or other shared coordination place:
+
+```markdown
+## Codex session status
+
+- Session owner:
+- Branch:
+- Worktree:
+- Mode: review-only | docs-only | implementation
+- Objective:
+- Files/directories expected to edit:
+- Files/directories explicitly off-limits:
+- ResearchOS work zone: green | yellow | red
+- Contract surfaces touched:
+  - /research/run behavior: yes/no
+  - ResearchRun schema: yes/no
+  - Evidence labels: yes/no
+  - Deterministic fallback behavior: yes/no
+  - Frontend/backend contract: yes/no
+- Active dependencies or blockers:
+- Checks planned:
+- PR scope/non-goals:
+```
+
+Protected ResearchOS areas require explicit coordination before edits:
+
+- `/research/run` behavior.
+- `ResearchRun` schema and frontend/backend response contracts.
+- Deterministic fallback behavior, including golden-path and unknown/custom
+  question fallback.
+- Evidence labels, which must remain exactly: `Data`, `Source claim`,
+  `Framework inference`, `Narrative signal`, and `Open question`.
+- The product boundary against buy/sell recommendations, price targets, and
+  personalized investment advice.
+- Any file or directory already declared by another active Codex session.
+
+Review-only tasks may inspect the whole repo and run read-only commands, but
+must not modify files, stage changes, commit, push, merge, or open
+implementation PRs. If review finds a needed fix, hand it off as a separate
+scoped implementation task.
+
 ## Current backend behavior
 
 The backend supports deterministic golden-path demos for:
