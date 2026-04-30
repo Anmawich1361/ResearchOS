@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BarChart3,
   Blocks,
@@ -28,28 +28,46 @@ import {
 } from "@/components/ResearchSourceStatus";
 import { TransmissionMap } from "@/components/TransmissionMap";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getResearchDataStatus, runResearch } from "@/lib/api";
+import {
+  getAgenticResearchStatus,
+  getResearchDataStatus,
+  runAgenticResearch,
+  runResearch,
+} from "@/lib/api";
 import { demoResearchRun } from "@/lib/demoData";
 import { usesBankOfCanadaValetData } from "@/lib/sourceMarkers";
 import type {
+  AgenticResearchStatus,
   DemoResearchRun,
   ResearchDataSource,
   ResearchDataStatus,
 } from "@/lib/types";
 
+type ResearchMode = "demo" | "agentic";
+
 export function ResearchDashboard() {
   const [run, setRun] = useState<DemoResearchRun>(demoResearchRun);
   const [question, setQuestion] = useState(demoResearchRun.question);
+  const [researchMode, setResearchMode] = useState<ResearchMode>("demo");
   const [dataSource, setDataSource] =
     useState<ResearchDataSource>("Frontend fallback");
   const [dataStatus, setDataStatus] = useState<ResearchDataStatus | null>(null);
+  const [agenticStatus, setAgenticStatus] =
+    useState<AgenticResearchStatus | null>(null);
   const [isDataStatusUnavailable, setIsDataStatusUnavailable] = useState(false);
+  const [isAgenticStatusUnavailable, setIsAgenticStatusUnavailable] =
+    useState(false);
   const [hasRunCompleted, setHasRunCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const caseDisplay = getCaseDisplay(run);
   const hasOfficialBocData = usesBankOfCanadaValetData(run);
+  const isAgenticAvailable = agenticStatus?.mode === "configured";
+  const isAgenticSelected = researchMode === "agentic" && isAgenticAvailable;
+  const activeResearchMode =
+    isAgenticSelected ? "agentic" : "demo";
   const sourceMode: ResearchSourceMode = !hasRunCompleted
     ? "ready"
     : hasOfficialBocData
@@ -67,30 +85,76 @@ export function ResearchDashboard() {
     }
   }, []);
 
-  const runQuestion = useCallback(async (nextQuestion: string) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    setQuestion(nextQuestion);
-
+  const refreshAgenticStatus = useCallback(async () => {
     try {
-      const backendRun = await runResearch(nextQuestion);
-      setRun(backendRun);
-      setQuestion(backendRun.question);
-      setDataSource("Backend response");
-      setHasRunCompleted(true);
-      void refreshDataStatus();
+      const nextAgenticStatus = await getAgenticResearchStatus();
+      setAgenticStatus(nextAgenticStatus);
+      setIsAgenticStatusUnavailable(false);
     } catch {
-      setRun(demoResearchRun);
-      setQuestion(demoResearchRun.question);
-      setDataSource("Frontend fallback");
-      setDataStatus(null);
-      setIsDataStatusUnavailable(true);
-      setHasRunCompleted(true);
-      setErrorMessage("Backend unavailable. Showing hardcoded frontend fallback.");
-    } finally {
-      setIsLoading(false);
+      setAgenticStatus(null);
+      setIsAgenticStatusUnavailable(true);
     }
-  }, [refreshDataStatus]);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getAgenticResearchStatus()
+      .then((nextAgenticStatus) => {
+        if (!isMounted) {
+          return;
+        }
+        setAgenticStatus(nextAgenticStatus);
+        setIsAgenticStatusUnavailable(false);
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+        setAgenticStatus(null);
+        setIsAgenticStatusUnavailable(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const runQuestion = useCallback(
+    async (nextQuestion: string) => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      setQuestion(nextQuestion);
+
+      try {
+        const backendRun =
+          activeResearchMode === "agentic"
+            ? await runAgenticResearch(nextQuestion)
+            : await runResearch(nextQuestion);
+        setRun(backendRun);
+        setQuestion(backendRun.question);
+        setDataSource("Backend response");
+        setHasRunCompleted(true);
+        void refreshDataStatus();
+        void refreshAgenticStatus();
+      } catch {
+        setRun(demoResearchRun);
+        setQuestion(demoResearchRun.question);
+        setDataSource("Frontend fallback");
+        setDataStatus(null);
+        setIsDataStatusUnavailable(true);
+        setHasRunCompleted(true);
+        setErrorMessage(
+          activeResearchMode === "agentic"
+            ? "Agentic beta unavailable. Showing hardcoded frontend fallback."
+            : "Backend unavailable. Showing hardcoded frontend fallback.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [activeResearchMode, refreshAgenticStatus, refreshDataStatus],
+  );
 
   const handleRun = useCallback(() => {
     void runQuestion(question);
@@ -153,9 +217,21 @@ export function ResearchDashboard() {
           timestamp={run.timestamp}
           dataSource={dataSource}
           isLoading={isLoading}
+          runButtonLabel={
+            activeResearchMode === "agentic" ? "Run agentic beta" : "Run demo"
+          }
           errorMessage={errorMessage}
           onQuestionChange={setQuestion}
           onRun={handleRun}
+        />
+
+        <ResearchModeControl
+          mode={activeResearchMode}
+          agenticStatus={agenticStatus}
+          isAgenticStatusUnavailable={isAgenticStatusUnavailable}
+          isLoading={isLoading}
+          isAgenticSelected={isAgenticSelected}
+          onModeChange={setResearchMode}
         />
 
         <ResearchSourceStatus
@@ -248,15 +324,90 @@ function getCaseDisplay(run: DemoResearchRun) {
     };
   }
 
+  if (run.scenario.includes("Bank of Canada")) {
+    return {
+      caseId: "canadian-banks" as DemoCaseId,
+      framework: "Monetary transmission",
+      driverLabel: "Banks",
+      driverDescription:
+        "The prototype reasons over a structured bank driver list instead of presenting a free-form assistant answer.",
+      mapDescription:
+        "The primary research artifact: how rate cuts move through bank balance-sheet mechanics, credit quality, provisions, and valuation.",
+    };
+  }
+
   return {
-    caseId: "canadian-banks" as DemoCaseId,
-    framework: "Monetary transmission",
-    driverLabel: "Banks",
+    caseId: null,
+    framework: "Agentic beta",
+    driverLabel: "Custom",
     driverDescription:
-      "The prototype reasons over a structured bank driver list instead of presenting a free-form assistant answer.",
+      "Agentic beta uses a structured research workflow when configured.",
     mapDescription:
-      "The primary research artifact: how rate cuts move through bank balance-sheet mechanics, credit quality, provisions, and valuation.",
+      "The primary research artifact: how the custom shock moves through channels, fundamentals, valuation drivers, and open questions.",
   };
+}
+
+function ResearchModeControl({
+  mode,
+  agenticStatus,
+  isAgenticStatusUnavailable,
+  isLoading,
+  isAgenticSelected,
+  onModeChange,
+}: {
+  mode: ResearchMode;
+  agenticStatus: AgenticResearchStatus | null;
+  isAgenticStatusUnavailable: boolean;
+  isLoading: boolean;
+  isAgenticSelected: boolean;
+  onModeChange: (mode: ResearchMode) => void;
+}) {
+  const isAgenticAvailable = agenticStatus?.mode === "configured";
+  const agenticStatusLabel = isAgenticAvailable
+    ? `${agenticStatus.model}${agenticStatus.webSearchEnabled ? " + web" : ""}`
+    : "Agentic beta unavailable";
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 p-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={mode === "agentic" ? "inference" : "data"}>
+            {mode === "agentic" ? "Agentic beta" : "Demo mode"}
+          </Badge>
+          <Badge variant="outline">{agenticStatusLabel}</Badge>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Demo mode uses deterministic fallback data. Agentic beta uses a
+          structured research workflow when configured.
+        </p>
+        {isAgenticStatusUnavailable ? (
+          <p className="mt-1 font-mono text-xs text-amber-200">
+            Agentic beta unavailable. Demo mode remains available.
+          </p>
+        ) : null}
+      </div>
+      <div className="grid min-w-56 grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant={mode === "demo" ? "default" : "outline"}
+          disabled={isLoading}
+          aria-pressed={mode === "demo"}
+          onClick={() => onModeChange("demo")}
+        >
+          Demo mode
+        </Button>
+        <Button
+          type="button"
+          variant={isAgenticSelected ? "default" : "outline"}
+          disabled={isLoading || !isAgenticAvailable}
+          aria-pressed={isAgenticSelected}
+          onClick={() => onModeChange("agentic")}
+        >
+          Agentic beta
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 function HeaderStat({

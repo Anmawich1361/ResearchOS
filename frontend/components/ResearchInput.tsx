@@ -18,6 +18,7 @@ type ResearchInputProps = {
   timestamp: string;
   dataSource: ResearchDataSource;
   isLoading: boolean;
+  runButtonLabel: string;
   errorMessage?: string | null;
   onQuestionChange: (question: string) => void;
   onRun: () => void;
@@ -29,6 +30,7 @@ export function ResearchInput({
   timestamp,
   dataSource,
   isLoading,
+  runButtonLabel,
   errorMessage,
   onQuestionChange,
   onRun,
@@ -68,7 +70,7 @@ export function ResearchInput({
               disabled={isLoading}
               className="h-12 bg-cyan-300 text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isLoading ? "Running..." : "Run demo"}
+              {isLoading ? "Running..." : runButtonLabel}
               {isLoading ? (
                 <LoaderCircle className="animate-spin" />
               ) : (
