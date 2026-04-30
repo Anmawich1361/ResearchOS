@@ -3,6 +3,10 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agentic import (
+    get_agentic_research_status,
+    run_agentic_research_pipeline,
+)
 from app.data_sources import get_policy_rate_status
 from app.orchestrator import run_research_pipeline
 from app.schemas import ResearchRun, ResearchRunRequest
@@ -53,6 +57,11 @@ def research_data_status() -> dict[str, object]:
     return {"bankOfCanadaPolicyRate": get_policy_rate_status()}
 
 
+@app.get("/research/agentic-status")
+def research_agentic_status() -> dict[str, object]:
+    return get_agentic_research_status()
+
+
 @app.post(
     "/research/run",
     response_model=ResearchRun,
@@ -60,3 +69,12 @@ def research_data_status() -> dict[str, object]:
 )
 def run_research(request: ResearchRunRequest) -> ResearchRun:
     return run_research_pipeline(request)
+
+
+@app.post(
+    "/research/agentic-run",
+    response_model=ResearchRun,
+    response_model_exclude_none=True,
+)
+def run_agentic_research(request: ResearchRunRequest) -> ResearchRun:
+    return run_agentic_research_pipeline(request)

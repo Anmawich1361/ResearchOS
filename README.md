@@ -28,16 +28,25 @@ Month-one goal: a beautiful, focused macro-transmission research demo.
 - Backend API: https://researchos-api.onrender.com
 - Backend health: https://researchos-api.onrender.com/health
 
-The backend analysis remains deterministic. The Canadian banks demo may replace
-the policy-rate chart with official Bank of Canada Valet API data when
-available, and otherwise falls back to deterministic demo data. ResearchOS is
-not investment advice, a live market-data terminal, or a source of buy/sell
+The default backend analysis remains deterministic. The Canadian banks demo may
+replace the policy-rate chart with official Bank of Canada Valet API data when
+available, and otherwise falls back to deterministic demo data. ResearchOS also
+supports an optional Agentic beta path through `/research/agentic-run` when the
+backend is explicitly configured with server-side OpenAI credentials. Agentic
+failures fall back safely to deterministic demo data. ResearchOS is not
+investment advice, a live market-data terminal, or a source of buy/sell
 recommendations.
 
 For deployed source checks, see `docs/boc-verification.md` or run:
 
 ```bash
 ./scripts/verify_research_api.sh
+```
+
+For the optional Agentic beta, see `docs/agentic-research.md` or run:
+
+```bash
+./scripts/verify_agentic_research_api.sh
 ```
 
 ---
@@ -55,7 +64,10 @@ For deployed source checks, see `docs/boc-verification.md` or run:
    tailwinds versus hyperscaler ROI and free-cash-flow pressure.
 5. Mention that custom questions can still be typed, but unknown questions
    intentionally fall back to the Canadian banks golden path for demo reliability.
-6. Close by noting that outputs use strict evidence labels, official data is
+6. If Agentic beta is configured, switch from **Demo mode** to **Agentic beta**
+   and explain that it uses the same structured research workbench schema with
+   safe deterministic fallback.
+7. Close by noting that outputs use strict evidence labels, official data is
    explicitly labeled when shown, and the app is not a live market-data terminal
    or an investment recommendation product.
 
@@ -80,6 +92,10 @@ Research question
 → Synthesis Agent
 → Transmission Map + Evidence Board + Bull/Bear + Memo
 ```
+
+In Demo mode, this workflow is deterministic and fixture-backed. In Agentic beta
+mode, the backend can run an optional structured OpenAI-backed workflow and
+normalize the result into the same `ResearchRun` schema.
 
 The canonical MVP workflow is:
 

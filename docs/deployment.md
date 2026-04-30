@@ -5,11 +5,11 @@ ResearchOS is deployed as two services:
 - FastAPI backend on Render
 - Next.js frontend on Vercel
 
-The backend analysis remains deterministic. The Canadian banks demo may replace
-the policy-rate chart with official Bank of Canada Valet API data when
-available, and otherwise falls back to deterministic demo data. Deployment
-should not add OpenAI, FRED, SEC, database, auth, or live market-data
-integrations.
+The default backend analysis remains deterministic. The Canadian banks demo may
+replace the policy-rate chart with official Bank of Canada Valet API data when
+available, and otherwise falls back to deterministic demo data. The optional
+Agentic beta can be enabled with server-side OpenAI configuration, but app
+correctness must not depend on live OpenAI or web access.
 
 The Bank of Canada Valet API does not require an API key.
 Use `/research/data-status` to verify whether the latest Canadian banks policy
@@ -29,6 +29,19 @@ Set this environment variable:
 ```text
 ALLOWED_ORIGINS=<vercel frontend URL>
 ```
+
+Optional Agentic beta variables:
+
+```text
+AGENTIC_RESEARCH_ENABLED=true
+OPENAI_API_KEY=<server-side key>
+OPENAI_RESEARCH_MODEL=gpt-5.4-mini
+AGENTIC_WEB_SEARCH_ENABLED=false
+AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+```
+
+Leave `AGENTIC_RESEARCH_ENABLED` unset or false to keep deterministic fallback
+only. Do not configure `OPENAI_API_KEY` in Vercel; it is backend-only.
 
 Use the frontend origin only, without a path. Example:
 
@@ -80,6 +93,8 @@ The frontend will call:
 
 ```text
 <NEXT_PUBLIC_API_BASE_URL>/research/run
+<NEXT_PUBLIC_API_BASE_URL>/research/agentic-status
+<NEXT_PUBLIC_API_BASE_URL>/research/agentic-run
 ```
 
 ## Smoke Checks
@@ -108,6 +123,12 @@ For the full deployed API verification flow, run:
 
 ```bash
 ./scripts/verify_research_api.sh https://<render-backend-host>
+```
+
+For Agentic beta status and fallback verification, run:
+
+```bash
+./scripts/verify_agentic_research_api.sh https://<render-backend-host>
 ```
 
 The canonical Bank of Canada marker checklist is in

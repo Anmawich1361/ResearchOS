@@ -9,6 +9,15 @@ export type Confidence = "Low" | "Low/Medium" | "Medium" | "Medium/High" | "High
 
 export type ResearchDataSource = "Frontend fallback" | "Backend response";
 
+export type AgenticResearchStatus = {
+  enabled: boolean;
+  configured: boolean;
+  model: string;
+  webSearchEnabled: boolean;
+  mode: "disabled" | "fallback" | "configured";
+  notes: string[];
+};
+
 export type BankOfCanadaPolicyRateStatus = {
   source: string;
   series: string;

@@ -51,7 +51,7 @@ export const DEMO_CASE_PRESETS: DemoCasePreset[] = [
 ];
 
 type DemoCaseSelectorProps = {
-  activeCaseId: DemoCaseId;
+  activeCaseId: DemoCaseId | null;
   isLoading: boolean;
   onSelect: (question: string) => void;
 };
