@@ -85,8 +85,8 @@ export function ResearchInput({
         <div className="flex items-center gap-3 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
           <ShieldCheck className="size-4 shrink-0" />
           <span>
-            Local backend skeleton only. No live data or investment
-            recommendations.
+            Official source-backed data may appear where explicitly labeled. No
+            investment recommendations.
           </span>
         </div>
       </form>

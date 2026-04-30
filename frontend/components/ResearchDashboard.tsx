@@ -22,21 +22,50 @@ import { EvidenceBoard } from "@/components/EvidenceBoard";
 import { MemoViewer } from "@/components/MemoViewer";
 import { OpenQuestions } from "@/components/OpenQuestions";
 import { ResearchInput } from "@/components/ResearchInput";
+import {
+  ResearchSourceStatus,
+  type ResearchSourceMode,
+} from "@/components/ResearchSourceStatus";
 import { TransmissionMap } from "@/components/TransmissionMap";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { runResearch } from "@/lib/api";
+import { getResearchDataStatus, runResearch } from "@/lib/api";
 import { demoResearchRun } from "@/lib/demoData";
-import type { DemoResearchRun, ResearchDataSource } from "@/lib/types";
+import { usesBankOfCanadaValetData } from "@/lib/sourceMarkers";
+import type {
+  DemoResearchRun,
+  ResearchDataSource,
+  ResearchDataStatus,
+} from "@/lib/types";
 
 export function ResearchDashboard() {
   const [run, setRun] = useState<DemoResearchRun>(demoResearchRun);
   const [question, setQuestion] = useState(demoResearchRun.question);
   const [dataSource, setDataSource] =
     useState<ResearchDataSource>("Frontend fallback");
+  const [dataStatus, setDataStatus] = useState<ResearchDataStatus | null>(null);
+  const [isDataStatusUnavailable, setIsDataStatusUnavailable] = useState(false);
+  const [hasRunCompleted, setHasRunCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const caseDisplay = getCaseDisplay(run);
+  const hasOfficialBocData = usesBankOfCanadaValetData(run);
+  const sourceMode: ResearchSourceMode = !hasRunCompleted
+    ? "ready"
+    : hasOfficialBocData
+      ? "official"
+      : "fallback";
+
+  const refreshDataStatus = useCallback(async () => {
+    try {
+      const nextDataStatus = await getResearchDataStatus();
+      setDataStatus(nextDataStatus);
+      setIsDataStatusUnavailable(false);
+    } catch {
+      setDataStatus(null);
+      setIsDataStatusUnavailable(true);
+    }
+  }, []);
 
   const runQuestion = useCallback(async (nextQuestion: string) => {
     setIsLoading(true);
@@ -48,15 +77,20 @@ export function ResearchDashboard() {
       setRun(backendRun);
       setQuestion(backendRun.question);
       setDataSource("Backend response");
+      setHasRunCompleted(true);
+      void refreshDataStatus();
     } catch {
       setRun(demoResearchRun);
       setQuestion(demoResearchRun.question);
       setDataSource("Frontend fallback");
+      setDataStatus(null);
+      setIsDataStatusUnavailable(true);
+      setHasRunCompleted(true);
       setErrorMessage("Backend unavailable. Showing hardcoded frontend fallback.");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshDataStatus]);
 
   const handleRun = useCallback(() => {
     void runQuestion(question);
@@ -105,7 +139,11 @@ export function ResearchDashboard() {
               }
             />
             <HeaderStat icon={CircuitBoard} label="Agents" value="Staged" />
-            <HeaderStat icon={Blocks} label="Data" value="Hardcoded" />
+            <HeaderStat
+              icon={Blocks}
+              label="Data"
+              value={hasOfficialBocData ? "BoC tagged" : "Demo"}
+            />
           </div>
         </header>
 
@@ -118,6 +156,13 @@ export function ResearchDashboard() {
           errorMessage={errorMessage}
           onQuestionChange={setQuestion}
           onRun={handleRun}
+        />
+
+        <ResearchSourceStatus
+          mode={sourceMode}
+          dataSource={dataSource}
+          dataStatus={dataStatus}
+          isStatusUnavailable={isDataStatusUnavailable}
         />
 
         <DemoCaseSelector
@@ -319,7 +364,7 @@ function ResearchJudgmentCard({
             <Gauge />
             {judgment.title}
           </Badge>
-          <Badge variant="outline">{dataSource} | no live data</Badge>
+          <Badge variant="outline">{dataSource} | source-labeled claims</Badge>
         </div>
         <h3 className="mt-4 text-2xl font-semibold tracking-normal text-zinc-50">
           {judgment.stance}

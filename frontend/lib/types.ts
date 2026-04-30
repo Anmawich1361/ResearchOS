@@ -9,6 +9,25 @@ export type Confidence = "Low" | "Low/Medium" | "Medium" | "Medium/High" | "High
 
 export type ResearchDataSource = "Frontend fallback" | "Backend response";
 
+export type BankOfCanadaPolicyRateStatus = {
+  source: string;
+  series: string;
+  url: string;
+  cacheTtlSeconds: number;
+  failureCooldownSeconds?: number;
+  cached: boolean;
+  inFailureCooldown?: boolean;
+  nextRetryAt?: string | null;
+  lastResult: "not_requested" | "live" | "cached" | "fallback" | "cooldown";
+  lastAttemptAt: string | null;
+  lastLiveFetchAt: string | null;
+  lastError: string | null;
+};
+
+export type ResearchDataStatus = {
+  bankOfCanadaPolicyRate: BankOfCanadaPolicyRateStatus;
+};
+
 export type AgentStage = {
   name: string;
   role: string;
