@@ -2,6 +2,28 @@
 
 <!-- What changed? Keep this concise. -->
 
+## Active Work Scope
+
+<!-- Keep this current while the PR is active so other Codex sessions can detect overlap. -->
+
+- Branch:
+- Worktree:
+- Mode: review-only | docs-only | implementation
+- Goal:
+- Currently touched files:
+- Files/directories expected to edit:
+- Files/directories explicitly off-limits:
+- Safe areas:
+- ResearchOS work zone: green | yellow | red
+- Protected surfaces touched:
+  - /research/run behavior: yes/no
+  - ResearchRun schema: yes/no
+  - Evidence labels: yes/no
+  - Deterministic fallback behavior: yes/no
+  - Frontend/backend contract: yes/no
+- Overlap checked against open PRs/active notes: yes/no
+- PR scope/non-goals:
+
 ## Type of change
 
 - [ ] Backend
@@ -38,6 +60,15 @@ Confirm the ResearchOS constraints were preserved:
 - [ ] Overlapping active work was checked and disclosed, if applicable
 - [ ] No unnecessary dependencies were added
 - [ ] Backend/frontend contracts remain aligned
+
+## Parallel-work checklist
+
+- [ ] Current branch and working tree were checked before edits
+- [ ] Files likely to be modified were identified before edits
+- [ ] Open PRs or active-session notes were checked for overlap
+- [ ] Active Work Scope section is complete and current
+- [ ] Draft PR is being used as the live ownership record, or this is not implementation work
+- [ ] No overlapping files were edited without explicit coordination
 
 ## Checks run
 

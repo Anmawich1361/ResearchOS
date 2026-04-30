@@ -75,35 +75,44 @@ For meaningful product or architecture changes, update the relevant strategy
 docs or add a reflection-log entry. Do not require reflection-log updates for
 tiny typo fixes or narrow docs-only PRs.
 
-## Parallel Codex session coordination
+## Parallel implementation preflight
 
-Before implementation work that may overlap another Codex session, read
-`docs/codex-app-worktrees.md`. Use one task, one branch, one worktree, and one
-PR. Keep implementation PRs small and avoid touching files owned by another
-active session unless explicit coordination happened first.
+Before implementation edits, Codex must read `docs/codex-app-worktrees.md` and
+complete this preflight:
 
-Before overlapping implementation work begins, report this status block in the
-task thread, issue, PR, or other shared coordination place:
+1. Check the current branch and working tree. Use a clean worktree when local
+   changes are unrelated.
+2. Identify the files likely to be modified and files that are explicitly
+   off-limits.
+3. Check open PRs, active Codex threads, and known team notes for overlapping
+   ownership.
+4. Avoid overlapping files unless the user explicitly instructs it or the
+   active owner coordinates the split.
+5. Proceed with the smallest scoped change that satisfies the task.
+6. For implementation work, open or update a draft PR early and keep its
+   `Active Work Scope` block current so it acts as the live ownership record.
+
+Use this block in implementation draft PR descriptions and coordination notes:
 
 ```markdown
-## Codex session status
+## Active Work Scope
 
-- Session owner:
 - Branch:
 - Worktree:
 - Mode: review-only | docs-only | implementation
-- Objective:
+- Goal:
+- Currently touched files:
 - Files/directories expected to edit:
 - Files/directories explicitly off-limits:
+- Safe areas:
 - ResearchOS work zone: green | yellow | red
-- Contract surfaces touched:
+- Protected surfaces touched:
   - /research/run behavior: yes/no
   - ResearchRun schema: yes/no
   - Evidence labels: yes/no
   - Deterministic fallback behavior: yes/no
   - Frontend/backend contract: yes/no
-- Active dependencies or blockers:
-- Checks planned:
+- Overlap checked against open PRs/active notes: yes/no
 - PR scope/non-goals:
 ```
 

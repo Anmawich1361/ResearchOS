@@ -20,6 +20,8 @@ For parallel Codex work, the rule expands to:
 
 - One implementation owner per active work zone.
 - One active PR scope per Codex session.
+- Draft PR descriptions are the preferred live ownership record for
+  implementation work.
 - No edits to another active session's declared files without explicit
   coordination.
 - Review-only sessions may inspect the whole codebase, but must not modify
@@ -28,39 +30,45 @@ For parallel Codex work, the rule expands to:
 ## Pre-Flight Checklist
 
 - Pull latest `main`.
-- Confirm the repo is clean.
-- Confirm there are no unrelated local changes.
+- Check the current branch and working tree.
+- Confirm there are no unrelated local changes, or create a clean worktree.
 - Use a separate worktree or separate Codex app task.
+- Identify files likely to be modified and files that are explicitly
+  off-limits.
 - Check open PRs, active Codex threads, and team notes for overlapping work.
-- Share the status block below before starting work that could overlap another
-  session.
+- Avoid overlapping files unless the user explicitly instructs it or the
+  active owner coordinates the split.
+- For implementation work, open or update a draft PR early and keep its
+  `Active Work Scope` block current.
 - Keep the Mac awake if running locally.
 - Do not close the laptop if it would stop the task.
 
-## Parallel Session Status Block
+## Active Work Scope Block
 
-Before overlapping work begins, every active Codex session should report this
-status block in its task thread, issue, PR, or other shared coordination place:
+For implementation work, the draft PR description should be the active
+ownership record. Keep this block current as files or scope change. For
+docs-only or pre-PR coordination, post the same block in the task thread or
+other shared coordination place.
 
 ```markdown
-## Codex session status
+## Active Work Scope
 
-- Session owner:
 - Branch:
 - Worktree:
 - Mode: review-only | docs-only | implementation
-- Objective:
+- Goal:
+- Currently touched files:
 - Files/directories expected to edit:
 - Files/directories explicitly off-limits:
+- Safe areas:
 - ResearchOS work zone: green | yellow | red
-- Contract surfaces touched:
+- Protected surfaces touched:
   - /research/run behavior: yes/no
   - ResearchRun schema: yes/no
   - Evidence labels: yes/no
   - Deterministic fallback behavior: yes/no
   - Frontend/backend contract: yes/no
-- Active dependencies or blockers:
-- Checks planned:
+- Overlap checked against open PRs/active notes: yes/no
 - PR scope/non-goals:
 ```
 
@@ -68,14 +76,30 @@ If the expected edit set is unclear, pause before implementation and narrow the
 task. If another session has declared ownership of the same files, coordinate
 before editing or move the work to a follow-up PR.
 
+Do not add a shared active-work registry file unless the user explicitly asks
+for one. A registry file can become a merge-conflict hotspot and is less useful
+than draft PRs, task threads, and issue notes that already describe ownership.
+
+## Draft PR Ownership Records
+
+For implementation work, open a draft PR as soon as the first coherent scoped
+change is present. The draft PR should make active ownership visible before
+more edits accumulate.
+
+- Keep the `Active Work Scope` block current.
+- List currently touched files and expected files separately.
+- Name protected surfaces touched, even when the answer is `no`.
+- Update the PR description when scope changes or files are handed off.
+- Close or mark the PR abandoned if the work is no longer active.
+
 ## ResearchOS Work Zones
 
 Use these zones to decide whether parallel work is safe.
 
 ### Green Zone
 
-Green-zone work is usually safe to run in parallel when the worktree is clean
-and the diff stays scoped.
+Green-zone work is safe for independent scoped work when the worktree is clean
+and the diff stays within the declared files.
 
 - Narrow docs-only wording updates outside active feature docs.
 - README or workflow clarifications that do not change product direction.
@@ -88,8 +112,9 @@ validation.
 
 ### Yellow Zone
 
-Yellow-zone work can run in parallel only after the status block is shared and
-the touched files are clearly disjoint from active sessions.
+Yellow-zone work requires coordination before touching files. It can run in
+parallel only after the scope is declared and the touched files are clearly
+disjoint from active sessions.
 
 - Strategy, roadmap, deployment, or workflow docs that may affect future
   implementation.
@@ -103,9 +128,9 @@ do not touch.
 
 ### Red Zone
 
-Red-zone work requires explicit coordination before edits. Do not start these
-changes in parallel with an active owner unless the owner confirms the file
-split and PR order.
+Red-zone work must not be touched without explicit approval or owner
+coordination. Do not start these changes in parallel with an active owner unless
+the owner confirms the file split and PR order.
 
 - `backend/app/agentic/`
 - `backend/tests/test_agentic_*.py`
@@ -206,6 +231,7 @@ Review-only sessions must not:
 - Stage or commit changes.
 - Reformat files as part of the review.
 - Push branches or open implementation PRs.
+- Merge anything.
 
 If a review-only session identifies a fix, open a separate implementation task
 or hand off a scoped finding with suggested files and tests.
@@ -220,6 +246,9 @@ Each Codex task must report:
 - Files changed.
 - Checks run.
 - Known issues.
+
+Implementation PRs should also include and maintain the `Active Work Scope`
+block so other sessions can check overlap before editing.
 
 ## Review Sequence
 
