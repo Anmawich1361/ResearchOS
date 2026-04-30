@@ -6,6 +6,7 @@ from app.agentic.diagnostics import (
     get_agentic_diagnostics,
     reset_agentic_diagnostics,
 )
+from app.agentic.openai_client import AgenticResearchError
 from app.agentic.pipeline import run_agentic_research_pipeline
 from app.demo_cases import CANADIAN_BANKS_RESEARCH_RUN
 from app.schemas import ResearchRunRequest
@@ -128,6 +129,25 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(diagnostics["lastFallbackReason"], "planner_failed")
         self.assertEqual(diagnostics["lastFallbackStage"], "planner")
         self.assertEqual(diagnostics["lastErrorType"], "AgenticPipelineError")
+
+    def test_planner_openai_error_records_specific_reason(self) -> None:
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=_ErrorClient(
+                    AgenticResearchError(
+                        "OpenAI Responses API returned invalid JSON",
+                        reason="invalid_json",
+                    )
+                ),
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(diagnostics["lastFallbackReason"], "invalid_json")
+        self.assertEqual(diagnostics["lastFallbackStage"], "planner")
+        self.assertEqual(diagnostics["lastErrorType"], "AgenticResearchError")
 
     def test_out_of_scope_planner_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())
@@ -271,6 +291,14 @@ class _FakeClient:
 class _FailingClient:
     def create_structured_response(self, **_: object) -> dict[str, object]:
         raise AssertionError("OpenAI client should not be called")
+
+
+class _ErrorClient:
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    def create_structured_response(self, **_: object) -> dict[str, object]:
+        raise self._error
 
 
 def _config(

@@ -20,7 +20,10 @@ from app.agentic.models import (
     SynthesisStageResult,
 )
 from app.agentic.normalizer import normalize_agentic_research_run
-from app.agentic.openai_client import OpenAIResearchClient
+from app.agentic.openai_client import (
+    AgenticResearchError,
+    OpenAIResearchClient,
+)
 from app.agentic.prompts import (
     FRAMEWORK_PROMPT,
     PLANNER_PROMPT,
@@ -131,7 +134,7 @@ def run_agentic_research_pipeline(
     except Exception as exc:
         _record_fallback(
             stage=current_stage,
-            reason=_fallback_reason_for_stage(current_stage),
+            reason=_fallback_reason_for_exception(current_stage, exc),
             config=resolved_config,
             error_type=type(exc).__name__,
         )
@@ -259,6 +262,12 @@ def _fallback_reason_for_stage(stage: str) -> str:
         "normalization": "normalization_failed",
         "safety": "safety_failed",
     }.get(stage, "unexpected_error")
+
+
+def _fallback_reason_for_exception(stage: str, exc: Exception) -> str:
+    if isinstance(exc, AgenticResearchError):
+        return exc.reason
+    return _fallback_reason_for_stage(stage)
 
 
 def _record_fallback(
