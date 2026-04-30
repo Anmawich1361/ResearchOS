@@ -24,6 +24,12 @@ type ResearchInputProps = {
   onRun: () => void;
 };
 
+const researchQuestionExamples = [
+  "Rate cuts -> Canadian banks",
+  "Oil shock -> airlines",
+  "AI capex -> semis/cloud",
+];
+
 export function ResearchInput({
   question,
   classification,
@@ -56,6 +62,26 @@ export function ResearchInput({
             <span className="font-mono text-xs text-muted-foreground">
               {timestamp}
             </span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs leading-5 text-muted-foreground">
+              <Badge variant="secondary">Research question composer</Badge>
+              <span>
+                Frame a macro, policy, industry, or narrative shock, then trace
+                transmission into fundamentals and valuation drivers.
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {researchQuestionExamples.map((example) => (
+                <Badge
+                  key={example}
+                  variant="outline"
+                  className="border-cyan-300/20 bg-cyan-300/5 text-cyan-100"
+                >
+                  {example}
+                </Badge>
+              ))}
+            </div>
           </div>
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <Input
