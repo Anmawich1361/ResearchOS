@@ -1,4 +1,8 @@
-from app.case_router import DemoCase, route_explicit_demo_case
+from app.case_router import (
+    DemoCase,
+    route_explicit_demo_case,
+    should_use_boc_policy_rate_data,
+)
 from app.data_sources import fetch_policy_rate_chart
 from app.demo_cases import (
     AI_CAPEX_SEMIS_RESEARCH_RUN,
@@ -26,7 +30,7 @@ def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
         update={"question": display_question},
     )
 
-    if explicit_case_name == "canadian_banks":
+    if should_use_boc_policy_rate_data(request.question):
         return _with_bank_of_canada_policy_rate(run)
 
     return run

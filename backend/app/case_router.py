@@ -28,6 +28,38 @@ def route_explicit_demo_case(question: str) -> DemoCase | None:
     return None
 
 
+def should_use_boc_policy_rate_data(question: str) -> bool:
+    """Return True for Canadian-bank policy-rate prompts eligible for BoC data."""
+    tokens = set(_TOKEN_RE.findall(question.lower()))
+
+    rate_or_policy_terms = {
+        "rate",
+        "rates",
+        "cut",
+        "cuts",
+        "easing",
+        "policy",
+        "overnight",
+        "boc",
+    }
+    canada_terms = {"canada", "canadian", "boc"}
+    bank_terms = {
+        "bank",
+        "banks",
+        "banking",
+        "mortgage",
+        "mortgages",
+        "lender",
+        "lenders",
+    }
+
+    return (
+        bool(tokens & rate_or_policy_terms)
+        and bool(tokens & canada_terms)
+        and bool(tokens & bank_terms)
+    )
+
+
 def _matches_oil_airlines_case(tokens: set[str]) -> bool:
     oil_terms = {"oil", "crude", "fuel", "jet", "energy"}
     airline_terms = {"airline", "airlines", "carrier", "carriers", "travel"}
