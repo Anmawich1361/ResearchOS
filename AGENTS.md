@@ -64,6 +64,17 @@ Deployment:
 - Frontend calls backend using `NEXT_PUBLIC_API_BASE_URL`.
 - Backend CORS is configured with `ALLOWED_ORIGINS` and `ALLOWED_ORIGIN_REGEX`.
 
+## Strategic project documents
+
+For product, architecture, or agentic-research changes, consult
+`docs/project-strategy.md`, `docs/agentic-research-roadmap.md`, and
+`docs/reflection-log.md`. If these docs conflict with `AGENTS.md`, `AGENTS.md`
+wins.
+
+For meaningful product or architecture changes, update the relevant strategy
+docs or add a reflection-log entry. Do not require reflection-log updates for
+tiny typo fixes or narrow docs-only PRs.
+
 ## Current backend behavior
 
 The backend supports deterministic golden-path demos for:

@@ -12,6 +12,17 @@ This is not a generic AI chatbot, stock picker, or investment recommendation too
 
 ---
 
+## Project strategy
+
+For durable product direction, agentic-research sequencing, and recurring
+project reflections, see:
+
+- `docs/project-strategy.md`
+- `docs/agentic-research-roadmap.md`
+- `docs/reflection-log.md`
+
+---
+
 ## MVP name
 
 **Financial Research OS — Macro Transmission Demo**
