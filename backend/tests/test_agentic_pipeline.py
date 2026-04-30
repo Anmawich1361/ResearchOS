@@ -36,7 +36,11 @@ class AgenticPipelineTest(unittest.TestCase):
 
         run = run_agentic_research_pipeline(
             ResearchRunRequest(question=CUSTOM_QUESTION),
-            config=_config(enabled=True, api_key="test-openai-key"),
+            config=_config(
+                enabled=True,
+                api_key="test-openai-key",
+                web_search_enabled=True,
+            ),
             client=client,
         )
 
@@ -110,7 +114,11 @@ class AgenticPipelineTest(unittest.TestCase):
     def test_evidence_labels_remain_restricted(self) -> None:
         run = run_agentic_research_pipeline(
             ResearchRunRequest(question=CUSTOM_QUESTION),
-            config=_config(enabled=True, api_key="test-openai-key"),
+            config=_config(
+                enabled=True,
+                api_key="test-openai-key",
+                web_search_enabled=True,
+            ),
             client=_FakeClient(_valid_stage_responses(_valid_agentic_run())),
         )
 
@@ -124,6 +132,35 @@ class AgenticPipelineTest(unittest.TestCase):
                 "Open question",
             },
         )
+
+    def test_data_evidence_falls_back_when_web_search_is_disabled(self) -> None:
+        run = run_agentic_research_pipeline(
+            ResearchRunRequest(question=CUSTOM_QUESTION),
+            config=_config(enabled=True, api_key="test-openai-key"),
+            client=_FakeClient(_valid_stage_responses(_valid_agentic_run())),
+        )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+
+    def test_data_evidence_falls_back_when_source_label_is_not_verified(
+        self,
+    ) -> None:
+        responses = _valid_stage_responses(_valid_agentic_run())
+        responses["agentic_source_research"]["sourceNotes"][0][
+            "sourceLabel"
+        ] = "Bureau of Labor Statistics"
+
+        run = run_agentic_research_pipeline(
+            ResearchRunRequest(question=CUSTOM_QUESTION),
+            config=_config(
+                enabled=True,
+                api_key="test-openai-key",
+                web_search_enabled=True,
+            ),
+            client=_FakeClient(responses),
+        )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
 
     def test_unrelated_agentic_fallback_does_not_leak_boc_marker(self) -> None:
         run = run_agentic_research_pipeline(

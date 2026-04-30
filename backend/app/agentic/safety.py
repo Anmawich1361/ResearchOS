@@ -66,9 +66,18 @@ class SafetyResult:
 def validate_agentic_research_run(
     run: ResearchRun,
     *,
-    source_backed: bool,
+    verified_source_labels: Iterable[str] | None = None,
 ) -> SafetyResult:
     reasons: list[str] = []
+    verified_source_label_set = (
+        {
+            _normalize_source_label(source_label)
+            for source_label in verified_source_labels
+            if source_label.strip()
+        }
+        if verified_source_labels is not None
+        else None
+    )
 
     if not run.transmissionNodes or not run.transmissionEdges:
         reasons.append("transmission map is empty")
@@ -94,14 +103,20 @@ def validate_agentic_research_run(
             reasons.append("forbidden recommendation or price-target language")
             break
 
-    if source_backed:
-        for item in run.evidence:
-            if item.type != "Data":
-                continue
-            source_label = (item.sourceLabel or "").strip()
-            if source_label.lower() in FABRICATED_SOURCE_LABELS:
-                reasons.append("source-backed Data claim has weak source label")
-                break
+    for item in run.evidence:
+        if item.type != "Data":
+            continue
+        source_label = (item.sourceLabel or "").strip()
+        normalized_source_label = _normalize_source_label(source_label)
+        if verified_source_label_set is None:
+            reasons.append("Data evidence requires verified source research")
+            break
+        if normalized_source_label in FABRICATED_SOURCE_LABELS:
+            reasons.append("Data evidence has weak source label")
+            break
+        if normalized_source_label not in verified_source_label_set:
+            reasons.append("Data evidence source label is not verified")
+            break
 
     return SafetyResult(
         passed=not reasons,
@@ -114,6 +129,10 @@ def _safe_text_blob(chunks: Iterable[str]) -> str:
     for pattern in SAFE_DISCLAIMER_PATTERNS:
         text = pattern.sub("", text)
     return text
+
+
+def _normalize_source_label(source_label: str) -> str:
+    return " ".join(source_label.strip().lower().split())
 
 
 def _iter_run_text(run: ResearchRun) -> Iterable[str]:

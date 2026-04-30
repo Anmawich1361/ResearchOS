@@ -31,6 +31,7 @@ class OpenAIResearchClient:
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self._config.model,
+            "store": False,
             "instructions": "\n\n".join(
                 [AGENTIC_SYSTEM_INSTRUCTIONS, instructions]
             ),
@@ -51,7 +52,7 @@ class OpenAIResearchClient:
 
         if allow_web_search and self._config.web_search_enabled:
             payload["tools"] = [{"type": "web_search"}]
-            payload["tool_choice"] = "auto"
+            payload["tool_choice"] = "required"
             payload["include"] = ["web_search_call.action.sources"]
 
         request = Request(

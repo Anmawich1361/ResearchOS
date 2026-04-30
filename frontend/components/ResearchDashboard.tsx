@@ -65,8 +65,9 @@ export function ResearchDashboard() {
   const caseDisplay = getCaseDisplay(run);
   const hasOfficialBocData = usesBankOfCanadaValetData(run);
   const isAgenticAvailable = agenticStatus?.mode === "configured";
+  const isAgenticSelected = researchMode === "agentic" && isAgenticAvailable;
   const activeResearchMode =
-    researchMode === "agentic" && isAgenticAvailable ? "agentic" : "demo";
+    isAgenticSelected ? "agentic" : "demo";
   const sourceMode: ResearchSourceMode = !hasRunCompleted
     ? "ready"
     : hasOfficialBocData
@@ -229,6 +230,7 @@ export function ResearchDashboard() {
           agenticStatus={agenticStatus}
           isAgenticStatusUnavailable={isAgenticStatusUnavailable}
           isLoading={isLoading}
+          isAgenticSelected={isAgenticSelected}
           onModeChange={setResearchMode}
         />
 
@@ -350,12 +352,14 @@ function ResearchModeControl({
   agenticStatus,
   isAgenticStatusUnavailable,
   isLoading,
+  isAgenticSelected,
   onModeChange,
 }: {
   mode: ResearchMode;
   agenticStatus: AgenticResearchStatus | null;
   isAgenticStatusUnavailable: boolean;
   isLoading: boolean;
+  isAgenticSelected: boolean;
   onModeChange: (mode: ResearchMode) => void;
 }) {
   const isAgenticAvailable = agenticStatus?.mode === "configured";
@@ -394,9 +398,9 @@ function ResearchModeControl({
         </Button>
         <Button
           type="button"
-          variant={mode === "agentic" ? "default" : "outline"}
+          variant={isAgenticSelected ? "default" : "outline"}
           disabled={isLoading || !isAgenticAvailable}
-          aria-pressed={mode === "agentic"}
+          aria-pressed={isAgenticSelected}
           onClick={() => onModeChange("agentic")}
         >
           Agentic beta
