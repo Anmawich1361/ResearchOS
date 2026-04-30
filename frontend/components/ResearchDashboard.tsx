@@ -65,9 +65,9 @@ export function ResearchDashboard() {
   const caseDisplay = getCaseDisplay(run);
   const hasOfficialBocData = usesBankOfCanadaValetData(run);
   const isAgenticAvailable = agenticStatus?.mode === "configured";
-  const isAgenticSelected = researchMode === "agentic" && isAgenticAvailable;
+  const isAgenticSelected = researchMode === "agentic";
   const activeResearchMode =
-    isAgenticSelected ? "agentic" : "demo";
+    isAgenticSelected && isAgenticAvailable ? "agentic" : "demo";
   const sourceMode: ResearchSourceMode = !hasRunCompleted
     ? "ready"
     : hasOfficialBocData
@@ -198,15 +198,19 @@ export function ResearchDashboard() {
                 isLoading
                   ? "Calling"
                   : dataSource === "Backend response"
-                    ? "Live API"
+                    ? "Backend run"
                     : "Fallback"
               }
             />
-            <HeaderStat icon={CircuitBoard} label="Agents" value="Staged" />
+            <HeaderStat
+              icon={CircuitBoard}
+              label="Mode"
+              value={activeResearchMode === "agentic" ? "Agentic" : "Demo"}
+            />
             <HeaderStat
               icon={Blocks}
               label="Data"
-              value={hasOfficialBocData ? "BoC tagged" : "Demo"}
+              value={hasOfficialBocData ? "Valet API" : "Demo"}
             />
           </div>
         </header>
@@ -226,11 +230,11 @@ export function ResearchDashboard() {
         />
 
         <ResearchModeControl
-          mode={activeResearchMode}
+          selectedMode={researchMode}
+          activeMode={activeResearchMode}
           agenticStatus={agenticStatus}
           isAgenticStatusUnavailable={isAgenticStatusUnavailable}
           isLoading={isLoading}
-          isAgenticSelected={isAgenticSelected}
           onModeChange={setResearchMode}
         />
 
@@ -348,59 +352,73 @@ function getCaseDisplay(run: DemoResearchRun) {
 }
 
 function ResearchModeControl({
-  mode,
+  selectedMode,
+  activeMode,
   agenticStatus,
   isAgenticStatusUnavailable,
   isLoading,
-  isAgenticSelected,
   onModeChange,
 }: {
-  mode: ResearchMode;
+  selectedMode: ResearchMode;
+  activeMode: ResearchMode;
   agenticStatus: AgenticResearchStatus | null;
   isAgenticStatusUnavailable: boolean;
   isLoading: boolean;
-  isAgenticSelected: boolean;
   onModeChange: (mode: ResearchMode) => void;
 }) {
   const isAgenticAvailable = agenticStatus?.mode === "configured";
   const agenticStatusLabel = isAgenticAvailable
     ? `${agenticStatus.model}${agenticStatus.webSearchEnabled ? " + web" : ""}`
-    : "Agentic beta unavailable";
+    : isAgenticStatusUnavailable
+      ? "Status unavailable"
+      : "Not configured";
+  const modeMessage = isAgenticAvailable
+    ? "Agentic beta is configured. Select it to run the structured agentic workflow."
+    : "Agentic beta is not configured. Runs will use deterministic demo mode.";
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-white/10 bg-zinc-950/70 p-4 md:flex-row md:items-center md:justify-between">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={mode === "agentic" ? "inference" : "data"}>
-            {mode === "agentic" ? "Agentic beta" : "Demo mode"}
+          <Badge variant={activeMode === "agentic" ? "inference" : "data"}>
+            Active: {activeMode === "agentic" ? "Agentic beta" : "Demo mode"}
+          </Badge>
+          <Badge variant="outline">
+            Selected:{" "}
+            {selectedMode === "agentic" ? "Agentic beta" : "Demo mode"}
           </Badge>
           <Badge variant="outline">{agenticStatusLabel}</Badge>
         </div>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Demo mode uses deterministic fallback data. Agentic beta uses a
-          structured research workflow when configured.
+          {modeMessage}
         </p>
         {isAgenticStatusUnavailable ? (
           <p className="mt-1 font-mono text-xs text-amber-200">
-            Agentic beta unavailable. Demo mode remains available.
+            Agentic beta status could not be checked. Demo mode remains
+            available.
           </p>
         ) : null}
       </div>
       <div className="grid min-w-56 grid-cols-2 gap-2">
         <Button
           type="button"
-          variant={mode === "demo" ? "default" : "outline"}
+          variant={selectedMode === "demo" ? "default" : "outline"}
           disabled={isLoading}
-          aria-pressed={mode === "demo"}
+          aria-pressed={selectedMode === "demo"}
           onClick={() => onModeChange("demo")}
         >
           Demo mode
         </Button>
         <Button
           type="button"
-          variant={isAgenticSelected ? "default" : "outline"}
+          variant={selectedMode === "agentic" ? "default" : "outline"}
           disabled={isLoading || !isAgenticAvailable}
-          aria-pressed={isAgenticSelected}
+          aria-pressed={selectedMode === "agentic"}
+          title={
+            isAgenticAvailable
+              ? "Run with Agentic beta"
+              : "Agentic beta is not configured"
+          }
           onClick={() => onModeChange("agentic")}
         >
           Agentic beta
