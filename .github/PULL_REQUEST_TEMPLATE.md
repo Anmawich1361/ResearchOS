@@ -35,6 +35,7 @@ Confirm the ResearchOS constraints were preserved:
 
 - [ ] This PR is limited to the requested task
 - [ ] No unrelated local files were committed
+- [ ] Overlapping active work was checked and disclosed, if applicable
 - [ ] No unnecessary dependencies were added
 - [ ] Backend/frontend contracts remain aligned
 
