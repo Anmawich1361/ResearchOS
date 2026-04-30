@@ -54,10 +54,11 @@ AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
 AGENTIC_MAX_OUTPUT_TOKENS=8000
 ```
 
-The backend uses direct stdlib HTTPS calls to the OpenAI Responses API when
-configured. Tests mock the adapter and do not require live OpenAI or web access.
-Do not use the beta for buy/sell recommendations, price targets, personalized
-investment advice, live market-data terminal behavior, or API-key exposure.
+The backend uses the official OpenAI Python SDK for the configured Agentic beta
+request path. Tests mock the adapter and do not require live OpenAI or web
+access. Do not use the beta for buy/sell recommendations, price targets,
+personalized investment advice, live market-data terminal behavior, or API-key
+exposure.
 
 Use `../docs/boc-verification.md` for deployment checks. It documents the exact
 `Bank of Canada Valet API` marker and the deterministic fallback behavior.
