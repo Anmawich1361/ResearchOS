@@ -31,9 +31,10 @@ produce complete structured JSON.
 Do not expose `OPENAI_API_KEY` to the frontend. Use `/research/agentic-status`
 to inspect capability status without exposing secrets.
 
-The backend uses the official OpenAI Python SDK for the configured agentic
-request path. OpenAI request failures are converted to safe fallback reason
-codes, and the deterministic demo path remains the app-correctness fallback.
+The configured Agentic beta request path uses the official OpenAI Python SDK
+with Responses API structured output. Request failures are converted to safe
+fallback reason codes, and deterministic demo data remains the correctness
+fallback.
 
 ## Workflow
 
@@ -83,6 +84,18 @@ To smoke-test a running backend:
 
 Fallback responses are acceptable when agentic mode is disabled or
 unconfigured.
+
+To compare basic OpenAI SDK connectivity with the ResearchOS planner structured
+request, run the safe local adapter diagnostic from the backend virtual
+environment:
+
+```bash
+cd backend
+.venv/bin/python ../scripts/debug_agentic_openai_adapter.py
+```
+
+The diagnostic requires `OPENAI_API_KEY` and prints only metadata-level status,
+reason, and exception-class information.
 
 ## Troubleshooting
 

@@ -1,5 +1,8 @@
 import json
+import py_compile
+import tempfile
 import unittest
+from pathlib import Path
 
 from app.agentic.config import AgenticResearchConfig
 from app.agentic.models import PlannerStageResult
@@ -88,6 +91,16 @@ class OpenAIResearchClientTest(unittest.TestCase):
             "_FakeAPITimeoutError",
         )
 
+    def test_connection_error_with_timeout_cause_maps_to_timeout(self) -> None:
+        error = APIConnectionError()
+        error.__cause__ = ReadTimeout()
+
+        with self.assertRaises(AgenticResearchError) as context:
+            _create_response_from_sdk(side_effect=error)
+
+        self.assertEqual(context.exception.reason, "timeout")
+        self.assertEqual(context.exception.safe_detail, "ReadTimeout")
+
     def test_api_status_error_maps_to_http_error(self) -> None:
         with self.assertRaises(AgenticResearchError) as context:
             _create_response_from_sdk(
@@ -114,6 +127,26 @@ class OpenAIResearchClientTest(unittest.TestCase):
             context.exception.safe_detail,
             "_FakeAPIResponseValidationError",
         )
+
+    def test_bad_request_schema_error_maps_to_schema_rejected(self) -> None:
+        with self.assertRaises(AgenticResearchError) as context:
+            _create_response_from_sdk(
+                side_effect=BadRequestError(
+                    status_code=400,
+                    body={
+                        "error": {
+                            "type": "invalid_request_error",
+                            "message": (
+                                "Invalid schema for text.format: strict "
+                                "schema is unsupported."
+                            ),
+                        }
+                    },
+                )
+            )
+
+        self.assertEqual(context.exception.reason, "schema_rejected")
+        self.assertEqual(context.exception.safe_detail, "schema_rejected")
 
     def test_incomplete_response_raises_agentic_research_error(self) -> None:
         with self.assertRaises(AgenticResearchError) as context:
@@ -195,6 +228,14 @@ class OpenAIResearchClientTest(unittest.TestCase):
 
         self.assertEqual(parsed, {"ok": True})
 
+    def test_debug_adapter_script_is_syntax_valid(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        script = repo_root / "scripts" / "debug_agentic_openai_adapter.py"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cfile = Path(temp_dir) / "debug_agentic_openai_adapter.pyc"
+            py_compile.compile(str(script), cfile=str(cfile), doraise=True)
+
 
 class _FakeResponse:
     def __init__(
@@ -269,6 +310,18 @@ class _FakeAPIStatusError(Exception):
         super().__init__("OpenAI API status error")
         self.status_code = status_code
         self.body = body
+
+
+class APIConnectionError(Exception):
+    pass
+
+
+class ReadTimeout(Exception):
+    pass
+
+
+class BadRequestError(_FakeAPIStatusError):
+    pass
 
 
 def _capture_request_payload(

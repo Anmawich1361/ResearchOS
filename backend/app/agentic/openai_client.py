@@ -299,22 +299,51 @@ def _collapse_simple_any_of(node: dict[str, Any]) -> dict[str, Any]:
 
 
 def _classify_sdk_error(exc: Exception) -> str:
+    names = _exception_class_names(exc)
+    cause_names = _exception_cause_class_names(exc)
     name = type(exc).__name__
     text = _safe_exception_text(exc)
     status_code = getattr(exc, "status_code", None)
 
-    if "Timeout" in name or name == "TimeoutError":
+    if (
+        "APITimeoutError" in names
+        or any("Timeout" in cause_name for cause_name in cause_names)
+        or "Timeout" in name
+        or name == "TimeoutError"
+    ):
         return "timeout"
     if isinstance(exc, TimeoutError):
         return "timeout"
-    if "ConnectionError" in name or name in {"URLError", "ConnectError"}:
+    if (
+        "APIConnectionError" in names
+        or any(
+            cause_name
+            in {
+                "ConnectError",
+                "ConnectionError",
+                "NetworkError",
+                "ReadError",
+                "RemoteProtocolError",
+                "URLError",
+            }
+            for cause_name in cause_names
+        )
+        or "ConnectionError" in name
+        or name in {"URLError", "ConnectError"}
+    ):
         return "url_error"
-    if "APIResponseValidationError" in name or name == "APIError":
+    if "BadRequestError" in names and _looks_like_schema_rejection(name, text):
+        return "schema_rejected"
+    if "APIResponseValidationError" in names:
         return "response_error"
-    if status_code is not None:
+    if name == "APIError":
+        return "response_error"
+    if "APIStatusError" in names or status_code is not None:
         if _looks_like_schema_rejection(str(status_code), text):
             return "schema_rejected"
         return "http_error"
+    if "APIError" in names:
+        return "response_error"
     if _looks_like_schema_rejection(name, text):
         return "schema_rejected"
 
@@ -332,6 +361,10 @@ def _safe_sdk_detail(exc: Exception, reason: str) -> str:
             except ValueError:
                 phrase = "http_error"
             return f"http_{status_code}_{phrase}"[:80]
+    if reason in {"timeout", "url_error"}:
+        cause_name = _safe_cause_class_name(exc)
+        if cause_name:
+            return cause_name
     return type(exc).__name__[:80]
 
 
@@ -351,7 +384,7 @@ def _safe_exception_text(exc: Exception) -> str:
             if isinstance(message, str):
                 chunks.append(message[:4000])
         else:
-            chunks.append(json.dumps(body, sort_keys=True)[:4000])
+            chunks.append(_safe_json_dump(body))
     elif isinstance(body, str):
         chunks.append(body[:4000])
 
@@ -362,9 +395,43 @@ def _safe_exception_text(exc: Exception) -> str:
         except Exception:
             response_json = None
         if isinstance(response_json, dict):
-            chunks.append(json.dumps(response_json, sort_keys=True)[:4000])
+            chunks.append(_safe_json_dump(response_json))
 
     return " ".join(chunks)
+
+
+def _exception_class_names(exc: Exception) -> set[str]:
+    return {cls.__name__ for cls in type(exc).__mro__}
+
+
+def _exception_cause_class_names(exc: Exception) -> set[str]:
+    names: set[str] = set()
+    seen: set[int] = set()
+    current = exc.__cause__ or exc.__context__
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        names.add(type(current).__name__)
+        current = current.__cause__ or current.__context__
+    return names
+
+
+def _safe_cause_class_name(exc: Exception) -> str | None:
+    current = exc.__cause__ or exc.__context__
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        name = type(current).__name__
+        if name:
+            return name[:80]
+        current = current.__cause__ or current.__context__
+    return None
+
+
+def _safe_json_dump(value: object) -> str:
+    try:
+        return json.dumps(value, sort_keys=True)[:4000]
+    except (TypeError, ValueError):
+        return type(value).__name__[:80]
 
 
 def _safe_error_type(error: Any) -> str:
@@ -383,5 +450,8 @@ def _looks_like_schema_rejection(error_type: str, message: str) -> bool:
         "schema" in text
         or "json_schema" in text
         or "response_format" in text
+        or "text.format" in text
+        or "structured output" in text
+        or "structured_outputs" in text
         or "strict" in text
     )
