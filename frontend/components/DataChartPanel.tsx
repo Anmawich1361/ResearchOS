@@ -34,6 +34,22 @@ const subscribe = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
+const dataCardReadingAidItems = [
+  {
+    label: "Driver context",
+    description: "Charts frame inputs used in the research thesis.",
+  },
+  {
+    label: "Source-labeled series",
+    description: "Series keep their source labels where available.",
+  },
+  {
+    label: "Not a forecast",
+    description:
+      "Research context only, not a price forecast, trading signal, or personalized recommendation.",
+  },
+];
+
 export function DataChartPanel({ charts }: DataChartPanelProps) {
   const mounted = useSyncExternalStore(
     subscribe,
@@ -57,6 +73,16 @@ export function DataChartPanel({ charts }: DataChartPanelProps) {
               ? "Official source labeled"
               : "Deterministic demo series"}
           </Badge>
+        </div>
+        <div className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 md:grid-cols-3">
+          {dataCardReadingAidItems.map((item) => (
+            <div key={item.label} className="min-w-0">
+              <Badge variant="outline">{item.label}</Badge>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {item.description}
+              </p>
+            </div>
+          ))}
         </div>
       </CardHeader>
       <CardContent>
