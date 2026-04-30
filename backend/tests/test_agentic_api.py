@@ -65,6 +65,8 @@ class AgenticApiTest(unittest.TestCase):
         questions = [
             "Should I buy Nvidia?",
             "What is the price target for RY?",
+            "What's your target price on RY?",
+            "Give me a PT for Nvidia.",
             "How much of my portfolio should I put in Nvidia?",
         ]
 

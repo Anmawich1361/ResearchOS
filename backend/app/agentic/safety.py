@@ -25,6 +25,11 @@ SAFE_DISCLAIMER_PATTERNS = [
         re.I,
     ),
     re.compile(r"\bexplain why price targets? can be unreliable\b", re.I),
+    re.compile(
+        r"\bwithout (?:giving|providing) (?:a\s+)?"
+        r"(?:price target|target price)\b",
+        re.I,
+    ),
     re.compile(r"\bwithout recommendations?\b", re.I),
     re.compile(r"\bnot investment advice\b", re.I),
 ]
@@ -65,10 +70,24 @@ FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
         re.I,
     ),
     re.compile(
+        r"\bwhat(?:\s+is|'s)\s+(?:your\s+)?"
+        r"(?:price target|target price)\s+(?:on|for|of)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\b(?:price target|target price)\s+(?:on|for|of)\b",
+        re.I,
+    ),
+    re.compile(
         r"\bgive\s+me\s+(?:a\s+|the\s+)?"
         r"(?:price target|target price)\b",
         re.I,
     ),
+    re.compile(
+        r"\bwhat(?:\s+is|'s)\s+(?:your\s+)?pt\s+(?:on|for|of)\b",
+        re.I,
+    ),
+    re.compile(r"\bgive\s+me\s+(?:a\s+)?pt\s+(?:on|for|of)\b", re.I),
     re.compile(
         r"\bwhat\s+should\s+my\s+"
         r"(?:price target|target price)\s+be\b",
@@ -129,22 +148,6 @@ FORBIDDEN_PATTERNS = [
     ),
 ]
 
-FABRICATED_SOURCE_LABELS = {
-    "",
-    "source",
-    "sources",
-    "web",
-    "web search",
-    "internet",
-    "n/a",
-    "na",
-    "unknown",
-    "model output",
-    "ai generated",
-    "future macro + bank kpi pack",
-    "data placeholder",
-}
-
 
 @dataclass(frozen=True)
 class SafetyResult:
@@ -164,21 +167,8 @@ def contains_forbidden_advisory_intent(text: str) -> bool:
     return contains_forbidden_research_intent(text)
 
 
-def validate_agentic_research_run(
-    run: ResearchRun,
-    *,
-    verified_source_labels: Iterable[str] | None = None,
-) -> SafetyResult:
+def validate_agentic_research_run(run: ResearchRun) -> SafetyResult:
     reasons: list[str] = []
-    verified_source_label_set = (
-        {
-            _normalize_source_label(source_label)
-            for source_label in verified_source_labels
-            if source_label.strip()
-        }
-        if verified_source_labels is not None
-        else None
-    )
 
     if not run.transmissionNodes or not run.transmissionEdges:
         reasons.append("transmission map is empty")
@@ -197,6 +187,8 @@ def validate_agentic_research_run(
         reasons.append("evidence label drift")
     if not node_labels <= ALLOWED_EVIDENCE_LABELS:
         reasons.append("node evidence label drift")
+    if "Data" in evidence_labels or "Data" in node_labels:
+        reasons.append("agentic output cannot use Data evidence")
 
     text_blob = _safe_text_blob(_iter_run_text(run))
     if contains_forbidden_research_intent(text_blob):
@@ -209,21 +201,6 @@ def validate_agentic_research_run(
                 )
                 break
 
-    for item in run.evidence:
-        if item.type != "Data":
-            continue
-        source_label = (item.sourceLabel or "").strip()
-        normalized_source_label = _normalize_source_label(source_label)
-        if verified_source_label_set is None:
-            reasons.append("Data evidence requires verified source research")
-            break
-        if normalized_source_label in FABRICATED_SOURCE_LABELS:
-            reasons.append("Data evidence has weak source label")
-            break
-        if normalized_source_label not in verified_source_label_set:
-            reasons.append("Data evidence source label is not verified")
-            break
-
     return SafetyResult(
         passed=not reasons,
         reasons=tuple(reasons),
@@ -235,10 +212,6 @@ def _safe_text_blob(chunks: Iterable[str]) -> str:
     for pattern in SAFE_DISCLAIMER_PATTERNS:
         text = pattern.sub("", text)
     return text
-
-
-def _normalize_source_label(source_label: str) -> str:
-    return " ".join(source_label.strip().lower().split())
 
 
 def _iter_run_text(run: ResearchRun) -> Iterable[str]:

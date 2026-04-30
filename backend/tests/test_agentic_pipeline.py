@@ -35,6 +35,8 @@ class AgenticPipelineTest(unittest.TestCase):
         questions = [
             "Should I buy Nvidia?",
             "What is the price target for RY?",
+            "What's your target price on RY?",
+            "Give me a PT for Nvidia.",
             "How much of my portfolio should I put in Nvidia?",
         ]
 
@@ -106,7 +108,9 @@ class AgenticPipelineTest(unittest.TestCase):
         }
 
         run = run_agentic_research_pipeline(
-            ResearchRunRequest(question="What is the price target for RY?"),
+            ResearchRunRequest(
+                question="What valuation sensitivities matter for RY?"
+            ),
             config=_config(enabled=True, api_key="test-openai-key"),
             client=_FakeClient(responses),
         )
@@ -161,22 +165,36 @@ class AgenticPipelineTest(unittest.TestCase):
             },
         )
 
-    def test_data_evidence_falls_back_when_web_search_is_disabled(self) -> None:
+    def test_data_evidence_falls_back_when_model_output_uses_data(self) -> None:
         run = run_agentic_research_pipeline(
             ResearchRunRequest(question=CUSTOM_QUESTION),
-            config=_config(enabled=True, api_key="test-openai-key"),
-            client=_FakeClient(_valid_stage_responses(_valid_agentic_run())),
+            config=_config(
+                enabled=True,
+                api_key="test-openai-key",
+                web_search_enabled=True,
+            ),
+            client=_FakeClient(
+                _valid_stage_responses(
+                    _valid_agentic_run(include_data_evidence=True)
+                )
+            ),
         )
 
         self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
 
-    def test_data_evidence_falls_back_when_source_label_is_not_verified(
+    def test_model_source_notes_cannot_authorize_data_evidence(
         self,
     ) -> None:
-        responses = _valid_stage_responses(_valid_agentic_run())
-        responses["agentic_source_research"]["sourceNotes"][0][
-            "sourceLabel"
-        ] = "Bureau of Labor Statistics"
+        spoofed_label = "Fake Official Source"
+        responses = _valid_stage_responses(
+            _valid_agentic_run(
+                include_data_evidence=True,
+                data_source_label=spoofed_label,
+            )
+        )
+        responses["agentic_source_research"]["sourceNotes"][0]["sourceLabel"] = (
+            spoofed_label
+        )
 
         run = run_agentic_research_pipeline(
             ResearchRunRequest(question=CUSTOM_QUESTION),
@@ -240,6 +258,8 @@ def _valid_agentic_run(
     *,
     headline: str | None = None,
     thesis: str | None = None,
+    include_data_evidence: bool = False,
+    data_source_label: str = "US Census Bureau",
 ):
     run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
         deep=True,
@@ -262,9 +282,15 @@ def _valid_agentic_run(
     )
     for item in run.evidence:
         if item.type == "Data":
-            item.sourceLabel = "US Census Bureau"
+            item.sourceLabel = data_source_label
             item.sourceType = "Official trade data"
             item.sourceQuality = "High"
+            if not include_data_evidence:
+                item.type = "Source claim"
+    if not include_data_evidence:
+        for node in run.transmissionNodes:
+            if node.evidenceType == "Data":
+                node.evidenceType = "Source claim"
     return run
 
 

@@ -86,13 +86,7 @@ def run_agentic_research_pipeline(
             synthesis_payload,
             requested_question=request.question,
         )
-        safety = validate_agentic_research_run(
-            run,
-            verified_source_labels=_verified_source_labels(
-                source_research,
-                web_search_enabled=resolved_config.web_search_enabled,
-            ),
-        )
+        safety = validate_agentic_research_run(run)
         if not safety.passed:
             return fallback_run
     except Exception:
@@ -193,21 +187,6 @@ def _run_synthesis_stage(
             "skeptic": skeptic.model_dump(),
         },
     )
-
-
-def _verified_source_labels(
-    source_research: SourceResearchResult,
-    *,
-    web_search_enabled: bool,
-) -> set[str] | None:
-    if not web_search_enabled:
-        return None
-
-    return {
-        source_note.sourceLabel.strip()
-        for source_note in source_research.sourceNotes
-        if source_note.sourceLabel.strip()
-    }
 
 
 def _validate_stage(

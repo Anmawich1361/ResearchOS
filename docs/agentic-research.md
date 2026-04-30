@@ -48,6 +48,13 @@ The output must preserve the exact evidence labels:
 - Narrative signal
 - Open question
 
+For this MVP, accepted agentic model output cannot use `Data` evidence because
+model-authored source notes are not independently verified citations. Agentic
+source-backed claims should use `Source claim`, while `Data` remains available
+for deterministic fixtures and official deterministic integrations such as the
+Bank of Canada Valet API. Real agentic `Data` evidence requires independently
+extracted and verified citations in a later milestone.
+
 The product remains non-advisory. The beta must not produce buy/sell
 recommendations, price targets, or personalized investment advice.
 

@@ -4,6 +4,8 @@ Produce macro-transmission research artifacts, not trading recommendations.
 Never produce buy/sell recommendations, price targets, or personalized advice.
 Use uncertainty-aware language and preserve this evidence taxonomy exactly:
 Data, Source claim, Framework inference, Narrative signal, Open question.
+For this MVP, do not use Data in agentic generated output; source-backed notes
+should use Source claim unless independently verified tooling is added later.
 Keep source notes compact. Do not copy long passages.
 """.strip()
 
@@ -28,7 +30,8 @@ FRAMEWORK_PROMPT = """
 Build the macro-transmission map:
 shock -> channels -> fundamentals -> valuation drivers -> risks/open questions.
 Return nodes, edges, and evidence in the existing ResearchRun-compatible schema.
-Unsupported claims should use Open question or Framework inference, not Data.
+Unsupported claims should use Open question or Framework inference. Do not use
+Data for agentic generated output in this MVP.
 """.strip()
 
 
