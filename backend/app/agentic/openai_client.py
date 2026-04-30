@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from http import HTTPStatus
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -27,7 +28,10 @@ class AgenticResearchError(RuntimeError):
 class OpenAIResearchClient:
     def __init__(self, config: AgenticResearchConfig) -> None:
         if not config.api_key:
-            raise AgenticResearchError("OpenAI API key is not configured")
+            raise AgenticResearchError(
+                "OpenAI API key is not configured",
+                reason="config_unavailable",
+            )
         self._config = config
 
     def create_structured_response(
@@ -84,11 +88,31 @@ class OpenAIResearchClient:
                 response_payload = json.loads(
                     response.read().decode("utf-8")
                 )
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        except HTTPError as exc:
+            reason = _classify_http_error(exc)
             raise AgenticResearchError(
-                f"OpenAI Responses API request failed for {stage_name}",
-                reason="request_failed",
+                f"OpenAI Responses API HTTP error for {stage_name}",
+                reason=reason,
+                safe_detail=_safe_http_detail(exc, reason),
+            ) from exc
+        except URLError as exc:
+            raise AgenticResearchError(
+                f"OpenAI Responses API URL error for {stage_name}",
+                reason="url_error",
+                safe_detail=type(exc.reason).__name__,
+            ) from exc
+        except TimeoutError as exc:
+            raise AgenticResearchError(
+                f"OpenAI Responses API timeout for {stage_name}",
+                reason="timeout",
                 safe_detail=type(exc).__name__,
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise AgenticResearchError(
+                "OpenAI Responses API returned invalid response JSON "
+                f"for {stage_name}",
+                reason="response_error",
+                safe_detail="invalid_response_json",
             ) from exc
 
         _raise_for_response_error(response_payload, stage_name)
@@ -147,17 +171,28 @@ def _raise_for_response_error(
         return
 
     error_type = "unknown_error"
+    error_message = ""
     if isinstance(error, dict):
         raw_type = error.get("type") or error.get("code")
         if isinstance(raw_type, str) and raw_type:
             error_type = raw_type[:80]
+        raw_message = error.get("message")
+        if isinstance(raw_message, str):
+            error_message = raw_message
     elif isinstance(error, str):
         error_type = error[:80]
+        error_message = error
+
+    reason = (
+        "schema_rejected"
+        if _looks_like_schema_rejection(error_type, error_message)
+        else "response_error"
+    )
 
     raise AgenticResearchError(
         f"OpenAI Responses API returned an error for {stage_name}: "
         f"{error_type}",
-        reason="api_error",
+        reason=reason,
         safe_detail=error_type,
     )
 
@@ -202,6 +237,8 @@ def _simplify_schema_node(node: Any) -> Any:
             continue
         simplified[key] = _simplify_schema_node(value)
 
+    simplified = _collapse_simple_any_of(simplified)
+
     properties = simplified.get("properties")
     if isinstance(properties, dict):
         simplified["additionalProperties"] = False
@@ -214,3 +251,63 @@ def _simplify_schema_node(node: Any) -> Any:
         simplified["additionalProperties"] = False
 
     return simplified
+
+
+def _collapse_simple_any_of(node: dict[str, Any]) -> dict[str, Any]:
+    any_of = node.get("anyOf")
+    if not isinstance(any_of, list):
+        return node
+
+    types: list[str] = []
+    for option in any_of:
+        if not isinstance(option, dict):
+            return node
+        option_type = option.get("type")
+        if not isinstance(option_type, str):
+            return node
+        unsupported_keys = set(option) - {"type"}
+        if unsupported_keys:
+            return node
+        types.append(option_type)
+
+    if not types:
+        return node
+
+    collapsed = dict(node)
+    collapsed.pop("anyOf", None)
+    collapsed["type"] = list(dict.fromkeys(types))
+    return collapsed
+
+
+def _classify_http_error(exc: HTTPError) -> str:
+    error_body = _read_http_error_body(exc)
+    if _looks_like_schema_rejection(str(exc.code), error_body):
+        return "schema_rejected"
+    return "http_error"
+
+
+def _safe_http_detail(exc: HTTPError, reason: str) -> str:
+    if reason == "schema_rejected":
+        return "schema_rejected"
+    try:
+        phrase = HTTPStatus(exc.code).phrase.lower().replace(" ", "_")
+    except ValueError:
+        phrase = "http_error"
+    return f"http_{exc.code}_{phrase}"[:80]
+
+
+def _read_http_error_body(exc: HTTPError) -> str:
+    try:
+        return exc.read().decode("utf-8", errors="replace")[:4000]
+    except Exception:
+        return ""
+
+
+def _looks_like_schema_rejection(error_type: str, message: str) -> bool:
+    text = f"{error_type} {message}".lower()
+    return (
+        "schema" in text
+        or "json_schema" in text
+        or "response_format" in text
+        or "strict" in text
+    )
