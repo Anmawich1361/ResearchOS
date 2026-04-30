@@ -69,6 +69,8 @@ class AgenticEvalHarnessTest(unittest.TestCase):
             "What capital allocation choices matter for semiconductors?",
             "How should research time be allocated across valuation drivers?",
             "Analyze capital allocation tradeoffs without portfolio advice.",
+            "How should a company allocate capital during a downturn?",
+            "What allocation of revenue drivers matters most for semiconductors?",
         ]
 
         for prompt in prompts:
