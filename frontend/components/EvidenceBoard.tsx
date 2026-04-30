@@ -16,6 +16,32 @@ type EvidenceBoardProps = {
   evidence: EvidenceItem[];
 };
 
+const evidenceLabelLegend: Array<{
+  type: EvidenceType;
+  description: string;
+}> = [
+  {
+    type: "Data",
+    description: "measured or structured data point",
+  },
+  {
+    type: "Source claim",
+    description: "claim attributed to a source or source label",
+  },
+  {
+    type: "Framework inference",
+    description: "ResearchOS analytical reasoning step",
+  },
+  {
+    type: "Narrative signal",
+    description: "market, industry, or story context",
+  },
+  {
+    type: "Open question",
+    description: "unresolved item needing verification",
+  },
+];
+
 export function EvidenceBoard({ evidence }: EvidenceBoardProps) {
   return (
     <Card className="bg-zinc-950/70">
@@ -38,6 +64,14 @@ export function EvidenceBoard({ evidence }: EvidenceBoardProps) {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-3 grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-5">
+          {evidenceLabelLegend.map((item) => (
+            <div key={item.type} className="flex min-w-0 flex-col gap-1">
+              <Badge variant={evidenceVariant(item.type)}>{item.type}</Badge>
+              <span className="leading-5">{item.description}</span>
+            </div>
+          ))}
+        </div>
         <div className="overflow-hidden rounded-md border border-white/10">
           <div className="grid grid-cols-[1.55fr_0.75fr_0.7fr_0.55fr_0.7fr_0.9fr_0.65fr] bg-white/[0.04] px-3 py-2 font-mono text-xs uppercase text-muted-foreground max-xl:hidden">
             <div>Claim</div>
