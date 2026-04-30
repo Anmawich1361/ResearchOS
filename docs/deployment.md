@@ -5,8 +5,15 @@ ResearchOS is deployed as two services:
 - FastAPI backend on Render
 - Next.js frontend on Vercel
 
-The backend is deterministic demo data only. Deployment should not add OpenAI,
-FRED, SEC, database, auth, or live-data integrations.
+The backend analysis remains deterministic demo data. The Canadian banks demo
+attempts to fetch live Bank of Canada target overnight rate data from the Valet
+API and falls back to deterministic demo data if unavailable. Deployment should
+not add OpenAI, FRED, SEC, database, auth, or live market-data integrations.
+
+The Bank of Canada Valet API does not require an API key.
+Use `/research/data-status` to verify whether the latest Canadian banks policy
+rate chart came from the live Bank of Canada feed, a fresh cache entry, or the
+deterministic fallback path.
 
 ## Backend: Render
 
@@ -86,6 +93,12 @@ Expected response:
 
 ```json
 {"status":"ok"}
+```
+
+Check live-data status:
+
+```bash
+curl https://<render-backend-host>/research/data-status
 ```
 
 Then open the Vercel frontend and run one of the golden-path demo questions.

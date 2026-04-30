@@ -9,6 +9,11 @@ _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 def route_question(question: str) -> DemoCase:
     """Route a user question to one of the deterministic golden-path demos."""
+    return route_explicit_demo_case(question) or "canadian_banks"
+
+
+def route_explicit_demo_case(question: str) -> DemoCase | None:
+    """Return an explicit golden-path match, or None for fallback routing."""
     tokens = set(_TOKEN_RE.findall(question.lower()))
 
     if _matches_ai_capex_case(tokens):
@@ -20,7 +25,39 @@ def route_question(question: str) -> DemoCase:
     if _matches_canadian_banks_case(tokens):
         return "canadian_banks"
 
-    return "canadian_banks"
+    return None
+
+
+def should_use_boc_policy_rate_data(question: str) -> bool:
+    """Return True for Canadian-bank policy-rate prompts eligible for BoC data."""
+    tokens = set(_TOKEN_RE.findall(question.lower()))
+
+    rate_or_policy_terms = {
+        "rate",
+        "rates",
+        "cut",
+        "cuts",
+        "easing",
+        "policy",
+        "overnight",
+        "boc",
+    }
+    canada_terms = {"canada", "canadian", "boc"}
+    bank_terms = {
+        "bank",
+        "banks",
+        "banking",
+        "mortgage",
+        "mortgages",
+        "lender",
+        "lenders",
+    }
+
+    return (
+        bool(tokens & rate_or_policy_terms)
+        and bool(tokens & canada_terms)
+        and bool(tokens & bank_terms)
+    )
 
 
 def _matches_oil_airlines_case(tokens: set[str]) -> bool:
