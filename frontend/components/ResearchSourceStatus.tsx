@@ -27,13 +27,12 @@ export function ResearchSourceStatus({
   const config = sourceModeConfig[mode];
   const Icon = config.icon;
   const policyRateStatus = dataStatus?.bankOfCanadaPolicyRate;
-  const statusText = policyRateStatus
-    ? policyRateStatus.inFailureCooldown
-      ? "Official source unavailable; deterministic fallback remains active"
-      : `BoC status: ${formatLastResult(policyRateStatus.lastResult)}`
-    : isStatusUnavailable
-      ? "Data source status unavailable"
-      : "Status checked after backend runs";
+  const statusText = isStatusUnavailable
+    ? "Source status unavailable; deterministic demo mode remains usable"
+    : config.statusText;
+  const sourceDetailText = policyRateStatus?.inFailureCooldown
+    ? "Bank of Canada Valet API cooldown is active."
+    : null;
 
   return (
     <Card className="border-cyan-300/15 bg-zinc-950/70 p-4">
@@ -52,6 +51,11 @@ export function ResearchSourceStatus({
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {config.detail}
             </p>
+            {sourceDetailText ? (
+              <p className="mt-1 font-mono text-xs text-amber-200">
+                {sourceDetailText}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">
@@ -72,6 +76,7 @@ const sourceModeConfig: Record<
   {
     title: string;
     detail: string;
+    statusText: string;
     badge: string;
     badgeVariant: "data" | "inference" | "outline";
     icon: LucideIcon;
@@ -81,7 +86,8 @@ const sourceModeConfig: Record<
   ready: {
     title: "Source readiness",
     detail:
-      "Official source-backed data may appear where explicitly labeled; deterministic fallback remains active.",
+      "Source status will be checked after a backend run. Demo data remains deterministic and usable.",
+    statusText: "Ready: source status will be checked after a backend run",
     badge: "Ready",
     badgeVariant: "outline",
     icon: ShieldCheck,
@@ -91,7 +97,8 @@ const sourceModeConfig: Record<
   official: {
     title: "Official BoC data used",
     detail:
-      "The current run includes the exact Bank of Canada Valet API marker in a chart or evidence row.",
+      "Exact Bank of Canada Valet API marker found in a chart or evidence row.",
+    statusText: "Official: exact Bank of Canada Valet API marker found",
     badge: "Official BoC",
     badgeVariant: "data",
     icon: Server,
@@ -101,7 +108,9 @@ const sourceModeConfig: Record<
   fallback: {
     title: "Deterministic demo fallback",
     detail:
-      "The current run has no Bank of Canada Valet API marker; deterministic demo data is active.",
+      "No exact Bank of Canada Valet API marker found. Reliable deterministic demo data is active.",
+    statusText:
+      "Fallback: no exact Bank of Canada Valet API marker found",
     badge: "Fallback",
     badgeVariant: "inference",
     icon: DatabaseZap,
@@ -109,20 +118,3 @@ const sourceModeConfig: Record<
       "flex size-9 shrink-0 items-center justify-center rounded-md border border-emerald-300/30 bg-emerald-300/10 text-emerald-200",
   },
 };
-
-function formatLastResult(lastResult: string): string {
-  switch (lastResult) {
-    case "not_requested":
-      return "not requested";
-    case "live":
-      return "latest fetch used official data";
-    case "cached":
-      return "fresh cache available";
-    case "fallback":
-      return "fallback recorded";
-    case "cooldown":
-      return "failure cooldown active";
-    default:
-      return lastResult;
-  }
-}
