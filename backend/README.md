@@ -51,14 +51,17 @@ OPENAI_API_KEY=<server-side key>
 OPENAI_RESEARCH_MODEL=gpt-5.4-mini
 AGENTIC_WEB_SEARCH_ENABLED=false
 AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+AGENTIC_PIPELINE_TIMEOUT_SECONDS=45
 AGENTIC_MAX_OUTPUT_TOKENS=8000
 ```
 
 The backend uses the official OpenAI Python SDK for the configured Agentic beta
-request path. Tests mock the adapter and do not require live OpenAI or web
-access. Do not use the beta for buy/sell recommendations, price targets,
-personalized investment advice, live market-data terminal behavior, or API-key
-exposure.
+request path. `AGENTIC_RESEARCH_TIMEOUT_SECONDS` applies to individual model
+requests, while `AGENTIC_PIPELINE_TIMEOUT_SECONDS` bounds the synchronous
+end-to-end beta run before falling back deterministically. Tests mock the
+adapter and do not require live OpenAI or web access. Do not use the beta for
+buy/sell recommendations, price targets, personalized investment advice, live
+market-data terminal behavior, or API-key exposure.
 
 Use `../docs/boc-verification.md` for deployment checks. It documents the exact
 `Bank of Canada Valet API` marker and the deterministic fallback behavior.

@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import patch
 
@@ -163,6 +164,37 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertIs(source_request["allow_web_search"], False)
         self.assertEqual(source_input["webSearchEnabled"], False)
         self.assertEqual(source_input["sourceMode"], "framework_only")
+
+    def test_pipeline_timeout_falls_back_with_safe_diagnostics(self) -> None:
+        client = _SlowStageClient(
+            _valid_stage_responses(_valid_agentic_run()),
+            slow_stage="agentic_planner",
+            delay_seconds=0.02,
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(
+                    enabled=True,
+                    api_key="test-openai-key",
+                    pipeline_timeout_seconds=0.001,
+                ),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        self.assertEqual(client.stage_names, ["agentic_planner"])
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+        self.assertEqual(
+            diagnostics["lastErrorType"],
+            "AgenticPipelineTimeout",
+        )
 
     def test_malformed_agentic_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())
@@ -431,11 +463,31 @@ class _StageErrorClient(_FakeClient):
         return super().create_structured_response(**kwargs)
 
 
+class _SlowStageClient(_FakeClient):
+    def __init__(
+        self,
+        responses: dict[str, dict[str, object]],
+        *,
+        slow_stage: str,
+        delay_seconds: float,
+    ) -> None:
+        super().__init__(responses)
+        self._slow_stage = slow_stage
+        self._delay_seconds = delay_seconds
+
+    def create_structured_response(self, **kwargs: object) -> dict[str, object]:
+        stage_name = str(kwargs["stage_name"])
+        if stage_name == self._slow_stage:
+            time.sleep(self._delay_seconds)
+        return super().create_structured_response(**kwargs)
+
+
 def _config(
     *,
     enabled: bool,
     api_key: str | None,
     web_search_enabled: bool = False,
+    pipeline_timeout_seconds: float = 45.0,
 ) -> AgenticResearchConfig:
     return AgenticResearchConfig(
         enabled=enabled,
@@ -443,6 +495,7 @@ def _config(
         model="gpt-5.4-mini",
         web_search_enabled=web_search_enabled,
         timeout_seconds=1.0,
+        pipeline_timeout_seconds=pipeline_timeout_seconds,
         max_output_tokens=4000,
         reasoning_effort="minimal",
     )

@@ -32,6 +32,8 @@ def get_agentic_research_status(
         "configured": resolved.configured,
         "model": resolved.model,
         "webSearchEnabled": resolved.web_search_enabled,
+        "requestTimeoutSeconds": resolved.timeout_seconds,
+        "pipelineTimeoutSeconds": resolved.pipeline_timeout_seconds,
         "maxOutputTokens": resolved.max_output_tokens,
         "reasoningEffort": resolved.reasoning_effort,
         "mode": resolved.mode,
