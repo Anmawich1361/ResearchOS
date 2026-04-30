@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from pydantic import ValidationError
@@ -5,6 +6,11 @@ from pydantic import ValidationError
 from app.agentic.config import (
     AgenticResearchConfig,
     get_agentic_research_config,
+)
+from app.agentic.diagnostics import (
+    mark_agentic_run_started,
+    record_agentic_fallback,
+    record_agentic_success,
 )
 from app.agentic.models import (
     FrameworkStageResult,
@@ -30,6 +36,9 @@ from app.orchestrator import run_research_pipeline
 from app.schemas import ResearchRun, ResearchRunRequest
 
 
+_logger = logging.getLogger(__name__)
+
+
 class AgenticPipelineError(RuntimeError):
     pass
 
@@ -42,31 +51,52 @@ def run_agentic_research_pipeline(
 ) -> ResearchRun:
     resolved_config = config or get_agentic_research_config()
     fallback_run = run_research_pipeline(request)
+    mark_agentic_run_started()
 
     if contains_forbidden_research_intent(request.question):
+        _record_fallback(
+            stage="input_safety",
+            reason="forbidden_input",
+            config=resolved_config,
+        )
         return fallback_run
 
     if not resolved_config.available:
+        _record_fallback(
+            stage="config",
+            reason="config_unavailable",
+            config=resolved_config,
+        )
         return fallback_run
 
+    current_stage = "client_setup"
     try:
         research_client = client or OpenAIResearchClient(resolved_config)
+        current_stage = "planner"
         planner = _run_planner_stage(research_client, request)
         if planner.scope == "out_of_scope":
+            _record_fallback(
+                stage=current_stage,
+                reason="planner_out_of_scope",
+                config=resolved_config,
+            )
             return fallback_run
 
+        current_stage = "source_research"
         source_research = _run_source_stage(
             research_client,
             request,
             planner,
             resolved_config,
         )
+        current_stage = "framework"
         framework = _run_framework_stage(
             research_client,
             request,
             planner,
             source_research,
         )
+        current_stage = "skeptic"
         skeptic = _run_skeptic_stage(
             research_client,
             request,
@@ -74,6 +104,7 @@ def run_agentic_research_pipeline(
             source_research,
             framework,
         )
+        current_stage = "synthesis"
         synthesis_payload = _run_synthesis_stage(
             research_client,
             request,
@@ -82,16 +113,31 @@ def run_agentic_research_pipeline(
             framework,
             skeptic,
         )
+        current_stage = "normalization"
         run = normalize_agentic_research_run(
             synthesis_payload,
             requested_question=request.question,
         )
+        current_stage = "safety"
         safety = validate_agentic_research_run(run)
         if not safety.passed:
+            _record_fallback(
+                stage=current_stage,
+                reason="safety_failed",
+                config=resolved_config,
+                safety_reasons=safety.reasons,
+            )
             return fallback_run
-    except Exception:
+    except Exception as exc:
+        _record_fallback(
+            stage=current_stage,
+            reason=_fallback_reason_for_stage(current_stage),
+            config=resolved_config,
+            error_type=type(exc).__name__,
+        )
         return fallback_run
 
+    record_agentic_success()
     return run
 
 
@@ -200,3 +246,52 @@ def _validate_stage(
         raise AgenticPipelineError(
             f"Agentic {stage_name} stage returned invalid payload"
         ) from exc
+
+
+def _fallback_reason_for_stage(stage: str) -> str:
+    return {
+        "client_setup": "config_unavailable",
+        "planner": "planner_failed",
+        "source_research": "source_research_failed",
+        "framework": "framework_failed",
+        "skeptic": "skeptic_failed",
+        "synthesis": "synthesis_failed",
+        "normalization": "normalization_failed",
+        "safety": "safety_failed",
+    }.get(stage, "unexpected_error")
+
+
+def _record_fallback(
+    *,
+    stage: str,
+    reason: str,
+    config: AgenticResearchConfig,
+    error_type: str | None = None,
+    safety_reasons: tuple[str, ...] = (),
+) -> None:
+    safe_safety_reasons = tuple(
+        _safe_reason_name(reason_text) for reason_text in safety_reasons
+    )
+    record_agentic_fallback(
+        reason=reason,
+        stage=stage,
+        error_type=error_type,
+    )
+    _logger.warning(
+        "Agentic beta fallback stage=%s reason=%s error_type=%s "
+        "safety_reason_count=%s safety_reasons=%s "
+        "web_search_enabled=%s model=%s",
+        stage,
+        reason,
+        error_type or "none",
+        len(safe_safety_reasons),
+        ",".join(safe_safety_reasons) or "none",
+        config.web_search_enabled,
+        config.model,
+    )
+
+
+def _safe_reason_name(reason: str) -> str:
+    safe = reason.lower().replace("/", " ")
+    safe = "_".join(part for part in safe.split() if part)
+    return safe[:80] or "unknown"

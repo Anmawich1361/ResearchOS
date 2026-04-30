@@ -18,12 +18,15 @@ OPENAI_API_KEY=<server-side key>
 OPENAI_RESEARCH_MODEL=gpt-5.4-mini
 AGENTIC_WEB_SEARCH_ENABLED=false
 AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+AGENTIC_MAX_OUTPUT_TOKENS=8000
 ```
 
 Only `AGENTIC_RESEARCH_ENABLED=true` and `OPENAI_API_KEY` are required to make
 the beta configured. `OPENAI_RESEARCH_MODEL` defaults to `gpt-5.4-mini`.
 `AGENTIC_WEB_SEARCH_ENABLED` must be explicitly enabled before the source
 research stage can request web search.
+`AGENTIC_MAX_OUTPUT_TOKENS` defaults to `8000` so reasoning models have room to
+produce complete structured JSON.
 
 Do not expose `OPENAI_API_KEY` to the frontend. Use `/research/agentic-status`
 to inspect capability status without exposing secrets.
@@ -76,3 +79,25 @@ To smoke-test a running backend:
 
 Fallback responses are acceptable when agentic mode is disabled or
 unconfigured.
+
+## Troubleshooting
+
+If `/research/agentic-status` reports `configured=true` but
+`/research/agentic-run` returns the deterministic Canadian banks fallback,
+inspect backend logs for the concise agentic fallback `stage` and `reason`.
+The status endpoint also exposes safe last-run fields such as
+`lastFallbackReason`, `lastFallbackStage`, `lastRunAt`, `lastSucceededAt`, and
+`lastErrorType`.
+
+A direct OpenAI Responses API call succeeding only confirms basic credentials
+and model access. The staged ResearchOS pipeline can still fall back if the
+structured output is incomplete, cannot be parsed, fails Pydantic
+normalization, uses rejected evidence labels, includes advisory language, or
+otherwise fails safety validation.
+
+Agentic `Data` evidence is intentionally rejected until independent citation
+extraction and verification exist. Model-authored source notes should normalize
+to `Source claim`.
+
+Keep the Agentic beta disabled in production until the structured pipeline,
+safety checks, and fallback diagnostics have been validated.

@@ -2,6 +2,7 @@ from app.agentic.config import (
     AgenticResearchConfig,
     get_agentic_research_config,
 )
+from app.agentic.diagnostics import get_agentic_diagnostics
 
 
 def get_agentic_research_status(
@@ -31,6 +32,9 @@ def get_agentic_research_status(
         "configured": resolved.configured,
         "model": resolved.model,
         "webSearchEnabled": resolved.web_search_enabled,
+        "maxOutputTokens": resolved.max_output_tokens,
+        "reasoningEffort": resolved.reasoning_effort,
         "mode": resolved.mode,
         "notes": notes,
+        **get_agentic_diagnostics(),
     }
