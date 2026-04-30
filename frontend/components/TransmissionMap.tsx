@@ -51,6 +51,22 @@ const legendItems: Array<{
   { label: "Risk", polarity: "risk" },
 ];
 
+const mapReadingAidItems = [
+  {
+    label: "Shock / driver nodes",
+    description: "Transmission points in the shock-to-fundamentals chain.",
+  },
+  {
+    label: "Directional links",
+    description: "Pressure paths between connected drivers.",
+  },
+  {
+    label: "Mechanism tracing",
+    description:
+      "Inspect how a shock may move; not a price forecast or trading signal.",
+  },
+];
+
 function evidenceVariant(type: EvidenceType) {
   if (type === "Data") return "data";
   if (type === "Framework inference") return "inference";
@@ -192,6 +208,16 @@ export function TransmissionMap({
               </div>
             ))}
           </div>
+        </div>
+        <div className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 md:grid-cols-3">
+          {mapReadingAidItems.map((item) => (
+            <div key={item.label} className="min-w-0">
+              <Badge variant="outline">{item.label}</Badge>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {item.description}
+              </p>
+            </div>
+          ))}
         </div>
       </CardHeader>
       <CardContent className="p-0">
