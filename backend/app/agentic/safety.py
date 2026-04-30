@@ -105,7 +105,7 @@ FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
         re.I,
     ),
     re.compile(
-        r"\bwhat\s+portfolio\s+allocation\s+should\s+i\s+use\b",
+        r"\bwhat\s+(?:portfolio\s+)?allocation\s+should\s+i\s+use\b",
         re.I,
     ),
     re.compile(
