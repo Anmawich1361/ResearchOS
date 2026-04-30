@@ -31,18 +31,32 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(run.question, CUSTOM_QUESTION)
         self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
 
-    def test_advisory_question_falls_back_before_openai_client(self) -> None:
-        with patch(
-            "app.agentic.pipeline.OpenAIResearchClient"
-        ) as research_client:
-            run = run_agentic_research_pipeline(
-                ResearchRunRequest(question="Should I buy Nvidia?"),
-                config=_config(enabled=True, api_key="test-openai-key"),
-            )
+    def test_forbidden_question_falls_back_before_openai_client(self) -> None:
+        questions = [
+            "Should I buy Nvidia?",
+            "What is the price target for RY?",
+            "How much of my portfolio should I put in Nvidia?",
+        ]
 
-        research_client.assert_not_called()
-        self.assertEqual(run.question, "Should I buy Nvidia?")
-        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        for question in questions:
+            with self.subTest(question=question):
+                with patch(
+                    "app.agentic.pipeline.OpenAIResearchClient"
+                ) as research_client:
+                    run = run_agentic_research_pipeline(
+                        ResearchRunRequest(question=question),
+                        config=_config(
+                            enabled=True,
+                            api_key="test-openai-key",
+                        ),
+                    )
+
+                research_client.assert_not_called()
+                self.assertEqual(run.question, question)
+                self.assertEqual(
+                    run.scenario,
+                    CANADIAN_BANKS_RESEARCH_RUN.scenario,
+                )
 
     def test_mocked_valid_agentic_output_returns_research_run(self) -> None:
         valid_run = _valid_agentic_run()

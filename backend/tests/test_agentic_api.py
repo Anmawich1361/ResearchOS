@@ -59,25 +59,38 @@ class AgenticApiTest(unittest.TestCase):
         self.assertEqual(run.question, "Unknown custom question")
         self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
 
-    def test_agentic_run_advisory_question_does_not_call_openai(self) -> None:
-        with patch.dict(
-            os.environ,
-            {
-                "AGENTIC_RESEARCH_ENABLED": "true",
-                "OPENAI_API_KEY": "test-openai-key",
-            },
-            clear=True,
-        ):
-            with patch(
-                "app.agentic.pipeline.OpenAIResearchClient"
-            ) as research_client:
-                run = run_agentic_research(
-                    ResearchRunRequest(question="Should I buy Nvidia?")
-                )
+    def test_agentic_run_forbidden_question_does_not_call_openai(
+        self,
+    ) -> None:
+        questions = [
+            "Should I buy Nvidia?",
+            "What is the price target for RY?",
+            "How much of my portfolio should I put in Nvidia?",
+        ]
 
-        research_client.assert_not_called()
-        self.assertEqual(run.question, "Should I buy Nvidia?")
-        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        for question in questions:
+            with self.subTest(question=question):
+                with patch.dict(
+                    os.environ,
+                    {
+                        "AGENTIC_RESEARCH_ENABLED": "true",
+                        "OPENAI_API_KEY": "test-openai-key",
+                    },
+                    clear=True,
+                ):
+                    with patch(
+                        "app.agentic.pipeline.OpenAIResearchClient"
+                    ) as research_client:
+                        run = run_agentic_research(
+                            ResearchRunRequest(question=question)
+                        )
+
+                research_client.assert_not_called()
+                self.assertEqual(run.question, question)
+                self.assertEqual(
+                    run.scenario,
+                    CANADIAN_BANKS_RESEARCH_RUN.scenario,
+                )
 
     def test_existing_research_run_behavior_is_unchanged(self) -> None:
         run = run_research(

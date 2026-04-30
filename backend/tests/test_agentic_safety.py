@@ -2,6 +2,7 @@ import unittest
 
 from app.agentic.safety import (
     contains_forbidden_advisory_intent,
+    contains_forbidden_research_intent,
     validate_agentic_research_run,
 )
 from app.demo_cases import CANADIAN_BANKS_RESEARCH_RUN
@@ -27,17 +28,50 @@ class AgenticSafetyTest(unittest.TestCase):
         for prompt in prompts:
             with self.subTest(prompt=prompt):
                 self.assertTrue(contains_forbidden_advisory_intent(prompt))
+                self.assertTrue(contains_forbidden_research_intent(prompt))
 
-    def test_advisory_intent_helper_allows_safe_disclaimers(self) -> None:
+    def test_research_intent_helper_detects_price_target_prompts(
+        self,
+    ) -> None:
+        prompts = [
+            "What is the price target for RY?",
+            "Give me a price target for Nvidia.",
+            "What should my target price be for Apple?",
+            "What is fair upside/downside to my target price?",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertTrue(contains_forbidden_research_intent(prompt))
+
+    def test_research_intent_helper_detects_portfolio_prompts(
+        self,
+    ) -> None:
+        prompts = [
+            "How much of my portfolio should I put in Nvidia?",
+            "What portfolio allocation should I use for Canadian banks?",
+            "How large should my position be in Tesla?",
+            "Should I overweight or underweight RY in my portfolio?",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertTrue(contains_forbidden_research_intent(prompt))
+
+    def test_research_intent_helper_allows_safe_disclaimers(self) -> None:
         disclaimers = [
             "This is not a buy/sell recommendation.",
             "No buy/sell recommendations are provided.",
+            "No price targets are provided.",
+            "Do not give me a price target.",
+            "Explain why price targets can be unreliable.",
+            "Analyze how rate cuts affect Canadian banks without recommendations.",
         ]
 
         for disclaimer in disclaimers:
             with self.subTest(disclaimer=disclaimer):
                 self.assertFalse(
-                    contains_forbidden_advisory_intent(disclaimer)
+                    contains_forbidden_research_intent(disclaimer)
                 )
 
     def test_safe_disclaimer_does_not_trigger_recommendation_failure(
@@ -79,6 +113,28 @@ class AgenticSafetyTest(unittest.TestCase):
         run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
             deep=True,
             update={"headline": "Investors should buy the stock now."},
+        )
+
+        result = validate_agentic_research_run(
+            run,
+            verified_source_labels=_data_source_labels(run),
+        )
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "forbidden recommendation or price-target language",
+            result.reasons,
+        )
+
+    def test_forbidden_portfolio_allocation_language_fails(self) -> None:
+        run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
+            deep=True,
+            update={
+                "thesis": (
+                    "Portfolio allocation should increase based on your "
+                    "risk tolerance."
+                )
+            },
         )
 
         result = validate_agentic_research_run(

@@ -23,7 +23,7 @@ from app.agentic.prompts import (
     SYNTHESIS_PROMPT,
 )
 from app.agentic.safety import (
-    contains_forbidden_advisory_intent,
+    contains_forbidden_research_intent,
     validate_agentic_research_run,
 )
 from app.orchestrator import run_research_pipeline
@@ -43,7 +43,7 @@ def run_agentic_research_pipeline(
     resolved_config = config or get_agentic_research_config()
     fallback_run = run_research_pipeline(request)
 
-    if contains_forbidden_advisory_intent(request.question):
+    if contains_forbidden_research_intent(request.question):
         return fallback_run
 
     if not resolved_config.available:
