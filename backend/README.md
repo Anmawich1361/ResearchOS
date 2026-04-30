@@ -20,6 +20,9 @@ curl -X POST http://127.0.0.1:8000/research/run \
   -d '{"question":"How would rate cuts affect Canadian banks?"}'
 ```
 
-Milestone 2 intentionally returns hardcoded demo data for the Canadian
-banks/rate-cuts, oil/airlines, and AI capex/semis-cloud golden paths.
-There are no OpenAI, FRED, SEC, database, auth, or live-data integrations yet.
+Milestone 2 intentionally returns deterministic demo data for the Canadian
+banks/rate-cuts, oil/airlines, and AI capex/semis-cloud golden paths. The
+Canadian banks demo may replace the policy-rate chart with official Bank of
+Canada Valet API data when available, and otherwise falls back to deterministic
+demo data. There are no OpenAI, FRED, SEC, database, auth, or live market-data
+integrations.

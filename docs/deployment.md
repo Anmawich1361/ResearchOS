@@ -5,10 +5,11 @@ ResearchOS is deployed as two services:
 - FastAPI backend on Render
 - Next.js frontend on Vercel
 
-The backend analysis remains deterministic demo data. The Canadian banks demo
-attempts to fetch live Bank of Canada target overnight rate data from the Valet
-API and falls back to deterministic demo data if unavailable. Deployment should
-not add OpenAI, FRED, SEC, database, auth, or live market-data integrations.
+The backend analysis remains deterministic. The Canadian banks demo may replace
+the policy-rate chart with official Bank of Canada Valet API data when
+available, and otherwise falls back to deterministic demo data. Deployment
+should not add OpenAI, FRED, SEC, database, auth, or live market-data
+integrations.
 
 The Bank of Canada Valet API does not require an API key.
 Use `/research/data-status` to verify whether the latest Canadian banks policy
