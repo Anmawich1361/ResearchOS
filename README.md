@@ -28,8 +28,11 @@ Month-one goal: a beautiful, focused macro-transmission research demo.
 - Backend API: https://researchos-api.onrender.com
 - Backend health: https://researchos-api.onrender.com/health
 
-The deployed app uses deterministic hardcoded demo data. It is not investment
-advice, a live-data analysis system, or a source of buy/sell recommendations.
+The backend analysis remains deterministic. The Canadian banks demo may replace
+the policy-rate chart with official Bank of Canada Valet API data when
+available, and otherwise falls back to deterministic demo data. ResearchOS is
+not investment advice, a live market-data terminal, or a source of buy/sell
+recommendations.
 
 ---
 
@@ -46,8 +49,9 @@ advice, a live-data analysis system, or a source of buy/sell recommendations.
    tailwinds versus hyperscaler ROI and free-cash-flow pressure.
 5. Mention that custom questions can still be typed, but unknown questions
    intentionally fall back to the Canadian banks golden path for demo reliability.
-6. Close by noting that all outputs are deterministic demo artifacts with strict
-   evidence labels, not live market data or investment recommendations.
+6. Close by noting that outputs use strict evidence labels, official data is
+   explicitly labeled when shown, and the app is not a live market-data terminal
+   or an investment recommendation product.
 
 ---
 
