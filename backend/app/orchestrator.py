@@ -30,7 +30,10 @@ def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
         update={"question": display_question},
     )
 
-    if should_use_boc_policy_rate_data(request.question):
+    if (
+        selected_case_name == "canadian_banks"
+        and should_use_boc_policy_rate_data(request.question)
+    ):
         return _with_bank_of_canada_policy_rate(run)
 
     return run

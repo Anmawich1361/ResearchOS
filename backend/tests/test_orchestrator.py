@@ -141,6 +141,26 @@ class ResearchOrchestratorTest(unittest.TestCase):
         self.assertEqual(run.charts, OIL_AIRLINES_RESEARCH_RUN.charts)
         self.assertEqual(run.evidence, OIL_AIRLINES_RESEARCH_RUN.evidence)
 
+    def test_mixed_oil_airlines_prompt_with_bank_rate_terms_skips_boc(
+        self,
+    ) -> None:
+        with patch(
+            "app.orchestrator.fetch_policy_rate_chart",
+            side_effect=AssertionError("BoC fetch should not be called"),
+        ) as fetch_policy_rate_chart:
+            run = run_research_pipeline(
+                ResearchRunRequest(
+                    question=(
+                        "What happens to airlines if oil prices rise while "
+                        "Canadian banks face rate cuts?"
+                    )
+                )
+            )
+
+        fetch_policy_rate_chart.assert_not_called()
+        self.assertEqual(run.scenario, OIL_AIRLINES_RESEARCH_RUN.scenario)
+        self.assertFalse(_has_boc_evidence(run.evidence))
+
     def test_ai_capex_question_does_not_call_boc_fetch(self) -> None:
         with patch(
             "app.orchestrator.fetch_policy_rate_chart",
@@ -159,6 +179,24 @@ class ResearchOrchestratorTest(unittest.TestCase):
         self.assertEqual(run.scenario, AI_CAPEX_SEMIS_RESEARCH_RUN.scenario)
         self.assertEqual(run.charts, AI_CAPEX_SEMIS_RESEARCH_RUN.charts)
         self.assertEqual(run.evidence, AI_CAPEX_SEMIS_RESEARCH_RUN.evidence)
+
+    def test_mixed_ai_capex_prompt_with_bank_rate_terms_skips_boc(self) -> None:
+        with patch(
+            "app.orchestrator.fetch_policy_rate_chart",
+            side_effect=AssertionError("BoC fetch should not be called"),
+        ) as fetch_policy_rate_chart:
+            run = run_research_pipeline(
+                ResearchRunRequest(
+                    question=(
+                        "Is AI capex becoming a risk for semiconductors while "
+                        "Canadian banks face BoC cuts?"
+                    )
+                )
+            )
+
+        fetch_policy_rate_chart.assert_not_called()
+        self.assertEqual(run.scenario, AI_CAPEX_SEMIS_RESEARCH_RUN.scenario)
+        self.assertFalse(_has_boc_evidence(run.evidence))
 
     def test_explicit_canadian_banks_question_preserves_fallback_on_boc_failure(
         self,
