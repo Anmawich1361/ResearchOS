@@ -3,6 +3,7 @@ set -u
 
 API_BASE="${1:-http://127.0.0.1:8000}"
 API_BASE="${API_BASE%/}"
+AGENTIC_RUN_TIMEOUT_SECONDS="${AGENTIC_DEBUG_LOCAL_TIMEOUT_SECONDS:-60}"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -23,7 +24,7 @@ cat "$STATUS_JSON"
 printf '\n\n'
 
 printf 'Checking %s/research/agentic-run\n' "$API_BASE"
-if ! curl -sS --fail --max-time 60 \
+if ! curl -sS --fail --max-time "$AGENTIC_RUN_TIMEOUT_SECONDS" \
   -H "Content-Type: application/json" \
   --data '{"question":"How would a stronger US dollar affect semiconductor earnings?"}' \
   "$API_BASE/research/agentic-run" \

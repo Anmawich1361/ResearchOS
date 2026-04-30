@@ -97,6 +97,29 @@ cd backend
 The diagnostic requires `OPENAI_API_KEY` and prints only metadata-level status,
 reason, and exception-class information.
 
+## Local live agentic verification
+
+For a local end-to-end configured-agentic smoke test, keep server-side secrets
+outside the repo:
+
+```bash
+mkdir -p ~/.researchos
+cat > ~/.researchos/secrets.env <<'EOF'
+OPENAI_API_KEY=<server-side key>
+OPENAI_RESEARCH_MODEL=gpt-5
+AGENTIC_RESEARCH_ENABLED=true
+AGENTIC_WEB_SEARCH_ENABLED=false
+EOF
+chmod 600 ~/.researchos/secrets.env
+./scripts/run_agentic_live_local.sh
+```
+
+Do not commit secrets or paste API keys into prompts. The script starts a local
+backend on port `8010` by default, or `RESEARCHOS_AGENTIC_TEST_PORT` if set, and
+does not print the API key. It prints only safe status and fallback diagnostics.
+Fallback is acceptable when `lastFallbackStage`, `lastFallbackReason`, or
+`lastErrorType` is specific enough to guide follow-up.
+
 ## Troubleshooting
 
 If `/research/agentic-status` reports `configured=true` but
