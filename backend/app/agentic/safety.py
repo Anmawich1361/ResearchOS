@@ -34,6 +34,14 @@ SAFE_DISCLAIMER_PATTERNS = [
     re.compile(r"\bnot investment advice\b", re.I),
 ]
 
+PERSONAL_ALLOCATION_CONTEXT = (
+    r"(?:(?:my|our)\s+"
+    r"(?:portfolio|investments?|account|position|tfsa|rrsp|ira|"
+    r"401k|401\(k\)|brokerage\s+account|investment\s+account)"
+    r"|(?:tfsa|rrsp|ira|401k|401\(k\)|brokerage\s+account|"
+    r"investment\s+account))"
+)
+
 FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
     re.compile(
         r"\bshould\s+(i|we|you|investors?)\s+"
@@ -100,12 +108,40 @@ FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
         re.I,
     ),
     re.compile(
-        r"\bhow\s+much\s+of\s+my\s+portfolio\s+should\s+i\s+"
+        rf"\bhow\s+much\s+of\s+{PERSONAL_ALLOCATION_CONTEXT}\s+should\s+i\s+"
         r"(?:put|allocate|invest)\b",
         re.I,
     ),
     re.compile(
         r"\bwhat\s+portfolio\s+allocation\s+should\s+i\s+use\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\bwhat\s+allocation\s+should\s+i\s+use\b"
+        rf".{{0,100}}\b{PERSONAL_ALLOCATION_CONTEXT}\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\bwhat\s+(?:percent|percentage|%)\s+of\s+"
+        rf"{PERSONAL_ALLOCATION_CONTEXT}\s+"
+        r"should\s+(?:be|i\s+(?:put|allocate|invest))\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bshould\s+i\s+allocate\s+"
+        r"(?:(?:\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?\s+percent)\s+of\s+)?"
+        rf".{{0,80}}\b{PERSONAL_ALLOCATION_CONTEXT}\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\bhow\s+should\s+i\s+allocate\b"
+        rf".{{0,100}}\b{PERSONAL_ALLOCATION_CONTEXT}\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\b{PERSONAL_ALLOCATION_CONTEXT}\b"
+        r".{0,100}\b(?:allocate|allocation|position|overweight|"
+        r"underweight|invest|put)\b",
         re.I,
     ),
     re.compile(
