@@ -51,6 +51,7 @@ OPENAI_API_KEY=<server-side key>
 OPENAI_RESEARCH_MODEL=gpt-5.4-mini
 AGENTIC_WEB_SEARCH_ENABLED=false
 AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+AGENTIC_MAX_OUTPUT_TOKENS=8000
 ```
 
 The backend uses direct stdlib HTTPS calls to the OpenAI Responses API when
