@@ -40,17 +40,62 @@ source_local_secrets() {
     return
   fi
 
+  local had_xtrace=0
+  local source_status=0
+
+  case "$-" in
+    *x*) had_xtrace=1 ;;
+  esac
+
   set +u
-  set -a
+  set +x
   # shellcheck source=/dev/null
   . "$SECRETS_FILE"
-  local source_status=$?
-  set +a
+  source_status=$?
   set -u
+  restore_xtrace "$had_xtrace"
 
   if [ "$source_status" -ne 0 ]; then
     die "Failed to source ~/.researchos/secrets.env."
   fi
+}
+
+restore_xtrace() {
+  if [ "$1" = "1" ]; then
+    set -x
+  fi
+}
+
+openai_api_key_is_missing() {
+  local had_xtrace=0
+  local missing=1
+
+  case "$-" in
+    *x*) had_xtrace=1 ;;
+  esac
+
+  set +x
+  if [ -z "${OPENAI_API_KEY:-}" ]; then
+    missing=0
+  fi
+  restore_xtrace "$had_xtrace"
+
+  return "$missing"
+}
+
+export_optional_agentic_config() {
+  local name
+
+  for name in \
+    AGENTIC_RESEARCH_TIMEOUT_SECONDS \
+    AGENTIC_MAX_OUTPUT_TOKENS \
+    AGENTIC_REASONING_EFFORT \
+    AGENTIC_PIPELINE_TIMEOUT_SECONDS
+  do
+    if [ "${!name+x}" = "x" ]; then
+      export "$name"
+    fi
+  done
 }
 
 select_backend_python() {
@@ -234,7 +279,7 @@ PY
 
 source_local_secrets
 
-if [ -z "${OPENAI_API_KEY:-}" ]; then
+if openai_api_key_is_missing; then
   printf 'OPENAI_API_KEY is not set; skipping live agentic verification.\n'
   exit 0
 fi
@@ -247,6 +292,7 @@ export OPENAI_API_KEY
 export OPENAI_RESEARCH_MODEL
 export AGENTIC_RESEARCH_ENABLED
 export AGENTIC_WEB_SEARCH_ENABLED
+export_optional_agentic_config
 
 if ! command -v curl >/dev/null 2>&1; then
   die "curl is required but was not found."

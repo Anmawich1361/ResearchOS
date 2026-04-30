@@ -116,9 +116,9 @@ chmod 600 ~/.researchos/secrets.env
 
 Do not commit secrets or paste API keys into prompts. The script starts a local
 backend on port `8010` by default, or `RESEARCHOS_AGENTIC_TEST_PORT` if set, and
-prints only safe status and fallback diagnostics. Fallback is acceptable when
-`lastFallbackStage`, `lastFallbackReason`, or `lastErrorType` is specific enough
-to guide follow-up.
+does not print the API key. It prints only safe status and fallback diagnostics.
+Fallback is acceptable when `lastFallbackStage`, `lastFallbackReason`, or
+`lastErrorType` is specific enough to guide follow-up.
 
 ## Troubleshooting
 
