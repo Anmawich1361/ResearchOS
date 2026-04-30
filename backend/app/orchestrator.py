@@ -1,4 +1,4 @@
-from app.case_router import DemoCase, route_question
+from app.case_router import DemoCase, route_explicit_demo_case
 from app.data_sources import fetch_policy_rate_chart
 from app.demo_cases import (
     AI_CAPEX_SEMIS_RESEARCH_RUN,
@@ -16,7 +16,8 @@ _CASE_RUNS: dict[DemoCase, ResearchRun] = {
 
 
 def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
-    selected_case_name = route_question(request.question)
+    explicit_case_name = route_explicit_demo_case(request.question)
+    selected_case_name = explicit_case_name or "canadian_banks"
     selected_case = _CASE_RUNS[selected_case_name]
     display_question = request.question.strip() or selected_case.question
 
@@ -25,7 +26,7 @@ def run_research_pipeline(request: ResearchRunRequest) -> ResearchRun:
         update={"question": display_question},
     )
 
-    if selected_case_name == "canadian_banks":
+    if explicit_case_name == "canadian_banks":
         return _with_bank_of_canada_policy_rate(run)
 
     return run
