@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   Background,
   Controls,
@@ -129,7 +129,10 @@ export function TransmissionMap({
   description,
 }: TransmissionMapProps) {
   const [selectedId, setSelectedId] = useState(nodes[0]?.id ?? "");
-  const [activeFocusId, setActiveFocusId] = useState("");
+  const [activeFocus, setActiveFocus] = useState<{
+    mapKey: string;
+    nodeId: string;
+  } | null>(null);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedId) ?? nodes[0],
@@ -137,14 +140,15 @@ export function TransmissionMap({
   );
 
   const selectedNodeId = selectedNode?.id ?? "";
+  const mapKey = useMemo(() => nodes.map((node) => node.id).join("|"), [nodes]);
   const activeFocusNodeId = useMemo(
-    () => (nodes.some((node) => node.id === activeFocusId) ? activeFocusId : ""),
-    [nodes, activeFocusId],
+    () =>
+      activeFocus?.mapKey === mapKey &&
+      nodes.some((node) => node.id === activeFocus.nodeId)
+        ? activeFocus.nodeId
+        : "",
+    [nodes, activeFocus, mapKey],
   );
-
-  useEffect(() => {
-    setActiveFocusId("");
-  }, [nodes]);
 
   const focusedEdgeIds = useMemo(
     () =>
@@ -214,11 +218,11 @@ export function TransmissionMap({
 
   const handleNodeClick = useCallback((_: unknown, node: Node<MapNodeData>) => {
     setSelectedId(node.id);
-    setActiveFocusId(node.id);
-  }, []);
+    setActiveFocus({ mapKey, nodeId: node.id });
+  }, [mapKey]);
 
   const handlePaneClick = useCallback(() => {
-    setActiveFocusId("");
+    setActiveFocus(null);
   }, []);
 
   return (
