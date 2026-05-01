@@ -138,8 +138,9 @@ export function ResearchDashboard() {
         void refreshDataStatus();
         void refreshAgenticStatus();
       } catch {
-        setRun(demoResearchRun);
-        setQuestion(demoResearchRun.question);
+        const fallbackQuestion = nextQuestion.trim() || demoResearchRun.question;
+        setRun({ ...demoResearchRun, question: fallbackQuestion });
+        setQuestion(fallbackQuestion);
         setDataSource("Frontend fallback");
         setDataStatus(null);
         setIsDataStatusUnavailable(true);
