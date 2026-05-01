@@ -166,25 +166,28 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(source_input["sourceMode"], "framework_only")
 
     def test_pipeline_timeout_falls_back_with_safe_diagnostics(self) -> None:
+        delay_seconds = 0.5
         client = _SlowStageClient(
             _valid_stage_responses(_valid_agentic_run()),
             slow_stage="agentic_planner",
-            delay_seconds=0.02,
+            delay_seconds=delay_seconds,
         )
 
         with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            start_time = time.monotonic()
             run = run_agentic_research_pipeline(
                 ResearchRunRequest(question=CUSTOM_QUESTION),
                 config=_config(
                     enabled=True,
                     api_key="test-openai-key",
-                    pipeline_timeout_seconds=0.001,
+                    pipeline_timeout_seconds=0.01,
                 ),
                 client=client,
             )
+            elapsed = time.monotonic() - start_time
 
         self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
-        self.assertEqual(client.stage_names, ["agentic_planner"])
+        self.assertLess(elapsed, 0.25)
         diagnostics = get_agentic_diagnostics()
         self.assertEqual(
             diagnostics["lastFallbackReason"],
@@ -193,8 +196,9 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
         self.assertEqual(
             diagnostics["lastErrorType"],
-            "AgenticPipelineTimeout",
+            "TimeoutError",
         )
+        time.sleep(delay_seconds + 0.02)
 
     def test_malformed_agentic_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())

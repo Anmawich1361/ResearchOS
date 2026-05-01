@@ -1,5 +1,6 @@
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Any
 
 from pydantic import ValidationError
@@ -77,6 +78,42 @@ def run_agentic_research_pipeline(
         )
         return fallback_run
 
+    executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="researchos-agentic-pipeline",
+    )
+    future = executor.submit(
+        _run_configured_agentic_research_pipeline,
+        request,
+        fallback_run,
+        resolved_config,
+        client,
+    )
+    try:
+        run = future.result(
+            timeout=resolved_config.pipeline_timeout_seconds
+        )
+    except FutureTimeout:
+        future.cancel()
+        _record_fallback(
+            stage="pipeline",
+            reason="pipeline_timeout",
+            config=resolved_config,
+            error_type="TimeoutError",
+        )
+        return fallback_run
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    return run
+
+
+def _run_configured_agentic_research_pipeline(
+    request: ResearchRunRequest,
+    fallback_run: ResearchRun,
+    resolved_config: AgenticResearchConfig,
+    client: OpenAIResearchClient | None,
+) -> ResearchRun:
     current_stage = "client_setup"
     deadline = _AgenticPipelineDeadline(
         timeout_seconds=resolved_config.pipeline_timeout_seconds
@@ -162,7 +199,10 @@ def run_agentic_research_pipeline(
         )
         return fallback_run
     except Exception as exc:
-        if _should_treat_as_pipeline_timeout(deadline, exc):
+        if deadline.expired or _should_treat_as_pipeline_timeout(
+            deadline,
+            exc,
+        ):
             _record_fallback(
                 stage="pipeline",
                 reason="pipeline_timeout",

@@ -144,6 +144,9 @@ responses, or secrets.
 If the full staged workflow exceeds `AGENTIC_PIPELINE_TIMEOUT_SECONDS`, the
 endpoint returns deterministic fallback and records `lastFallbackStage=pipeline`
 and `lastFallbackReason=pipeline_timeout`.
+The timed-out worker may continue briefly in the background until the in-flight
+OpenAI SDK request reaches its own request timeout; later deadline checks keep
+the accepted API response on deterministic fallback.
 
 A direct OpenAI Responses API call succeeding only confirms basic credentials
 and model access. The staged ResearchOS pipeline can still fall back if the
