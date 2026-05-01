@@ -8,21 +8,6 @@ type OpenQuestionsProps = {
   questions: OpenQuestion[];
 };
 
-const openQuestionGuideItems = [
-  {
-    label: "Diligence queue",
-    description: "Unresolved research checks to verify after the run.",
-  },
-  {
-    label: "Follow-up checks",
-    description: "Next items that would sharpen the synthesis.",
-  },
-  {
-    label: "Not a failure state",
-    description: "Open items are intentional, not missing output.",
-  },
-];
-
 export function OpenQuestions({ questions }: OpenQuestionsProps) {
   return (
     <Card className="bg-zinc-950/70">
@@ -34,16 +19,10 @@ export function OpenQuestions({ questions }: OpenQuestionsProps) {
           </CardTitle>
           <Badge variant="question">Needs research</Badge>
         </div>
-        <div className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 md:grid-cols-3">
-          {openQuestionGuideItems.map((item) => (
-            <div key={item.label} className="min-w-0">
-              <Badge variant="outline">{item.label}</Badge>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          Intentional diligence queue for unresolved checks to verify after the
+          run; not missing output.
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {questions.map((item) => (
