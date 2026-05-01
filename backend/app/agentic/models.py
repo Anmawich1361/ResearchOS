@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import (
     BullBearCase,
@@ -50,3 +50,15 @@ class SkepticStageResult(BaseModel):
 
 class SynthesisStageResult(BaseModel):
     researchRun: ResearchRun
+
+
+class FastSynthesisStageResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    researchType: str
+    shock: str
+    affectedEntities: list[str] = Field(min_length=1, max_length=3)
+    headline: str
+    thesis: str
+    keyDrivers: list[str] = Field(min_length=3, max_length=4)
+    openQuestions: list[str] = Field(min_length=2, max_length=4)

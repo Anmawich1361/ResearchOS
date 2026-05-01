@@ -68,11 +68,11 @@ def record_agentic_success(*, run_id: str) -> bool:
         if not _run_can_write(run_id):
             return False
         _diagnostics = AgenticFallbackDiagnostics(
-            lastFallbackReason=_diagnostics.lastFallbackReason,
-            lastFallbackStage=_diagnostics.lastFallbackStage,
+            lastFallbackReason=None,
+            lastFallbackStage=None,
             lastRunAt=_diagnostics.lastRunAt,
             lastSucceededAt=_utc_now(),
-            lastErrorType=_diagnostics.lastErrorType,
+            lastErrorType=None,
         )
     return True
 

@@ -79,6 +79,14 @@ class OpenAIResearchClientTest(unittest.TestCase):
 
         self.assertEqual(payload["timeout"], 12.5)
 
+    def test_stage_can_override_max_output_tokens(self) -> None:
+        payload = _capture_request_payload(
+            web_search_enabled=False,
+            max_output_tokens=1200,
+        )
+
+        self.assertEqual(payload["max_output_tokens"], 1200)
+
     def test_connection_error_maps_to_url_error(self) -> None:
         with self.assertRaises(AgenticResearchError) as context:
             _create_response_from_sdk(side_effect=_FakeAPIConnectionError())
@@ -337,6 +345,7 @@ def _capture_request_payload(
     web_search_enabled: bool,
     stage_name: str = "agentic_source_research",
     schema: dict[str, object] | None = None,
+    max_output_tokens: int | None = None,
     request_timeout_seconds: float | None = None,
 ) -> dict[str, object]:
     sdk_client = _FakeSDKClient()
@@ -361,6 +370,7 @@ def _capture_request_payload(
         schema=schema or {"type": "object"},
         input_data={"question": "How do tariffs affect margins?"},
         allow_web_search=True,
+        max_output_tokens=max_output_tokens,
         request_timeout_seconds=request_timeout_seconds,
     )
 

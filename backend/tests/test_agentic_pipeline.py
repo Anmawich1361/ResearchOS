@@ -11,6 +11,7 @@ from app.agentic.openai_client import AgenticResearchError
 from app.agentic.pipeline import run_agentic_research_pipeline
 from app.agentic.prompts import (
     FRAMEWORK_PROMPT,
+    FAST_SYNTHESIS_PROMPT,
     SKEPTIC_PROMPT,
     SOURCE_RESEARCH_PROMPT,
     SYNTHESIS_PROMPT,
@@ -178,11 +179,10 @@ class AgenticPipelineTest(unittest.TestCase):
             ],
         )
 
-    def test_valid_agentic_output_without_data_evidence_passes_web_disabled(
+    def test_target_prompt_completes_through_fast_path_without_timeout(
         self,
     ) -> None:
-        valid_run = _valid_agentic_run(question=TARGET_QUESTION)
-        client = _FakeClient(_valid_stage_responses(valid_run))
+        client = _FakeClient(_valid_fast_synthesis_response())
 
         run = run_agentic_research_pipeline(
             ResearchRunRequest(question=TARGET_QUESTION),
@@ -191,11 +191,18 @@ class AgenticPipelineTest(unittest.TestCase):
         )
 
         self.assertEqual(run.question, TARGET_QUESTION)
-        self.assertEqual(run.scenario, "Agentic beta macro transmission")
+        self.assertEqual(run.scenario, "Agentic beta fast macro transmission")
+        self.assertEqual(client.stage_names, ["agentic_fast_synthesis"])
+        self.assertEqual(client.requests[0]["max_output_tokens"], 2400)
         self.assertFalse(any(item.type == "Data" for item in run.evidence))
         self.assertFalse(
             any(node.evidenceType == "Data" for node in run.transmissionNodes)
         )
+        diagnostics = get_agentic_diagnostics()
+        self.assertIsNone(diagnostics["lastFallbackReason"])
+        self.assertIsNone(diagnostics["lastFallbackStage"])
+        self.assertIsNone(diagnostics["lastErrorType"])
+        self.assertIsNotNone(diagnostics["lastSucceededAt"])
 
     def test_stage_prompts_do_not_instruct_agentic_data_evidence(self) -> None:
         prompts = [
@@ -203,6 +210,7 @@ class AgenticPipelineTest(unittest.TestCase):
             FRAMEWORK_PROMPT,
             SKEPTIC_PROMPT,
             SYNTHESIS_PROMPT,
+            FAST_SYNTHESIS_PROMPT,
         ]
         allowed_labels = [
             "Source claim",
@@ -216,7 +224,93 @@ class AgenticPipelineTest(unittest.TestCase):
                 flattened_prompt = " ".join(prompt.split())
                 self.assertIn("Do not use Data", prompt)
                 for label in allowed_labels:
+                    if prompt == FAST_SYNTHESIS_PROMPT and label == "Source claim":
+                        continue
                     self.assertIn(label, flattened_prompt)
+
+    def test_fast_path_timeout_falls_back(self) -> None:
+        delay_seconds = 0.5
+        client = _SlowStageClient(
+            _valid_fast_synthesis_response(),
+            slow_stage="agentic_fast_synthesis",
+            delay_seconds=delay_seconds,
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=TARGET_QUESTION),
+                config=_config(
+                    enabled=True,
+                    api_key="test-openai-key",
+                    pipeline_timeout_seconds=0.01,
+                ),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(diagnostics["lastFallbackReason"], "pipeline_timeout")
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+        self.assertEqual(diagnostics["lastErrorType"], "TimeoutError")
+        time.sleep(delay_seconds + 0.02)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(diagnostics["lastFallbackReason"], "pipeline_timeout")
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+
+    def test_fast_path_invalid_output_falls_back(self) -> None:
+        client = _FakeClient({"agentic_fast_synthesis": {"not": "valid"}})
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=TARGET_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "normalization_failed",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "normalization")
+
+    def test_fast_path_unsafe_output_falls_back(self) -> None:
+        response = _valid_fast_synthesis_response(
+            headline="Investors should buy the stock."
+        )
+        client = _FakeClient(response)
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=TARGET_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(diagnostics["lastFallbackReason"], "safety_failed")
+        self.assertEqual(diagnostics["lastFallbackStage"], "safety")
+
+    def test_fast_path_data_evidence_falls_back(self) -> None:
+        response = _valid_fast_synthesis_response()
+        response["agentic_fast_synthesis"]["evidence"] = [{"type": "Data"}]
+        client = _FakeClient(response)
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=TARGET_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "normalization_failed",
+        )
 
     def test_source_stage_receives_web_search_disabled_context(self) -> None:
         client = _FakeClient(_valid_stage_responses(_valid_agentic_run()))
@@ -726,6 +820,43 @@ def _valid_stage_responses(run) -> dict[str, dict[str, object]]:
         "agentic_synthesis": {
             "researchRun": run.model_dump(),
         },
+    }
+
+
+def _valid_fast_synthesis_response(
+    *,
+    headline: str | None = None,
+) -> dict[str, dict[str, object]]:
+    return {
+        "agentic_fast_synthesis": {
+            "researchType": "macro_to_sector_shock",
+            "shock": "stronger US dollar",
+            "affectedEntities": [
+                "semiconductor manufacturers",
+                "semiconductor equipment suppliers",
+            ],
+            "headline": headline
+            or (
+                "A stronger dollar can pressure semiconductor earnings "
+                "through translation, demand, mix, and inventory channels."
+            ),
+            "thesis": (
+                "The dollar shock is a conditional earnings headwind. The "
+                "largest analytical questions are foreign-revenue translation, "
+                "customer purchasing power, pricing offsets, and whether "
+                "inventory corrections amplify the FX move."
+            ),
+            "keyDrivers": [
+                "Foreign-revenue translation",
+                "Export demand sensitivity",
+                "Gross-margin mix",
+                "Inventory and order timing",
+            ],
+            "openQuestions": [
+                "How much revenue is exposed to non-US customer currencies?",
+                "Are inventory corrections already visible in orders or guidance?",
+            ],
+        }
     }
 
 
