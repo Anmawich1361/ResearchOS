@@ -129,6 +129,10 @@ export function TransmissionMap({
   description,
 }: TransmissionMapProps) {
   const [selectedId, setSelectedId] = useState(nodes[0]?.id ?? "");
+  const [activeFocus, setActiveFocus] = useState<{
+    mapKey: string;
+    nodeId: string;
+  } | null>(null);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedId) ?? nodes[0],
@@ -136,6 +140,15 @@ export function TransmissionMap({
   );
 
   const selectedNodeId = selectedNode?.id ?? "";
+  const mapKey = useMemo(() => nodes.map((node) => node.id).join("|"), [nodes]);
+  const activeFocusNodeId = useMemo(
+    () =>
+      activeFocus?.mapKey === mapKey &&
+      nodes.some((node) => node.id === activeFocus.nodeId)
+        ? activeFocus.nodeId
+        : "",
+    [nodes, activeFocus, mapKey],
+  );
 
   const focusedEdgeIds = useMemo(
     () =>
@@ -143,12 +156,13 @@ export function TransmissionMap({
         edges
           .filter(
             (edge) =>
-              selectedNodeId !== "" &&
-              (edge.source === selectedNodeId || edge.target === selectedNodeId),
+              activeFocusNodeId !== "" &&
+              (edge.source === activeFocusNodeId ||
+                edge.target === activeFocusNodeId),
           )
           .map((edge) => edge.id),
       ),
-    [edges, selectedNodeId],
+    [edges, activeFocusNodeId],
   );
 
   const flowNodes = useMemo<Node<MapNodeData>[]>(
@@ -166,8 +180,8 @@ export function TransmissionMap({
   const flowEdges = useMemo<Edge[]>(
     () =>
       edges.map((edge) => {
-        const isFocused = focusedEdgeIds.has(edge.id);
-        const hasSelectedNode = selectedNodeId !== "";
+        const hasActiveFocus = activeFocusNodeId !== "";
+        const isFocused = hasActiveFocus && focusedEdgeIds.has(edge.id);
 
         return {
           id: edge.id,
@@ -182,7 +196,7 @@ export function TransmissionMap({
           style: {
             stroke: edgeTone[edge.polarity],
             strokeWidth: isFocused ? 2.4 : 1.2,
-            opacity: !hasSelectedNode || isFocused ? 0.96 : 0.3,
+            opacity: hasActiveFocus ? (isFocused ? 0.96 : 0.3) : 0.82,
           },
           labelStyle: {
             fill: "#e2e8f0",
@@ -199,11 +213,16 @@ export function TransmissionMap({
           zIndex: isFocused ? 2 : 1,
         };
       }),
-    [edges, focusedEdgeIds, selectedNodeId],
+    [edges, focusedEdgeIds, activeFocusNodeId],
   );
 
   const handleNodeClick = useCallback((_: unknown, node: Node<MapNodeData>) => {
     setSelectedId(node.id);
+    setActiveFocus({ mapKey, nodeId: node.id });
+  }, [mapKey]);
+
+  const handlePaneClick = useCallback(() => {
+    setActiveFocus(null);
   }, []);
 
   return (
@@ -253,6 +272,7 @@ export function TransmissionMap({
               edges={flowEdges}
               nodeTypes={nodeTypes}
               onNodeClick={handleNodeClick}
+              onPaneClick={handlePaneClick}
               fitView
               fitViewOptions={{ padding: 0.12 }}
               minZoom={0.48}
