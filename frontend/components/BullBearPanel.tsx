@@ -9,21 +9,6 @@ type BullBearPanelProps = {
   bearCase: BullBearCase;
 };
 
-const scenarioGuideItems = [
-  {
-    label: "Scenario lens",
-    description: "Compares upside and downside pressure paths.",
-  },
-  {
-    label: "Sensitivity check",
-    description: "Frames what would need to be true for each case.",
-  },
-  {
-    label: "Research stress test",
-    description: "Scenario implications only; no portfolio action is implied.",
-  },
-];
-
 export function BullBearPanel({ bullCase, bearCase }: BullBearPanelProps) {
   return (
     <Card className="bg-zinc-950/70">
@@ -35,16 +20,10 @@ export function BullBearPanel({ bullCase, bearCase }: BullBearPanelProps) {
           </CardTitle>
           <Badge variant="risk">Skeptic pass</Badge>
         </div>
-        <div className="grid gap-2 rounded-md border border-white/10 bg-black/25 p-3 md:grid-cols-3">
-          {scenarioGuideItems.map((item) => (
-            <div key={item.label} className="min-w-0">
-              <Badge variant="outline">{item.label}</Badge>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          Scenario lenses for upside/downside pressure, sensitivity, and what
+          would need to be true; no portfolio action is implied.
+        </p>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 lg:grid-cols-2">
