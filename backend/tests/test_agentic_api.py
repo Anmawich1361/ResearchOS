@@ -63,11 +63,24 @@ class AgenticApiTest(unittest.TestCase):
         self,
     ) -> None:
         questions = [
+            "Should I add Nvidia to my portfolio?",
+            "Should I trim my Nvidia position?",
+            "Which bank stock should I purchase?",
+            "Is RY worth buying?",
+            "Should I take profits on Nvidia?",
             "Should I buy Nvidia?",
+            "Should I buy more TD?",
+            "Should I sell my Royal Bank shares?",
+            "Should I average down?",
+            "Should I increase my position size?",
+            "What percentage of my portfolio should be in Canadian banks?",
             "What is the price target for RY?",
+            "What price target do you have for Nvidia?",
+            "What is a fair price target for RY?",
             "What's your target price on RY?",
             "Give me a PT for Nvidia.",
             "How much of my portfolio should I put in Nvidia?",
+            "Rank these stocks for me to buy.",
         ]
 
         for question in questions:

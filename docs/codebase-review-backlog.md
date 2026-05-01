@@ -37,7 +37,7 @@ Implementation work should still follow `AGENTS.md` and
 
 | ID | Severity | Status | Area | Finding | Files | Overlap risk | Confidence | Follow-up PR |
 |---|---|---|---|---|---|---|---|---|
-| RBUG-001 | Should fix | Open | Agentic safety | Advisory prompt variants bypass agentic preflight | `backend/app/agentic/safety.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
+| RBUG-001 | Should fix | In progress | Agentic safety | Advisory prompt variants bypass agentic preflight | `backend/app/agentic/safety.py` | Red | High | TBD |
 | RBUG-002 | Should fix | Open | Agentic trust / frontend evidence display | Model-authored source claims can appear provenance-verified | `backend/app/agentic/models.py`, `frontend/components/EvidenceBoard.tsx` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-003 | Should fix | Open | Agentic reliability | Agentic request path can block synchronously for too long | `backend/app/agentic/pipeline.py`, `backend/app/agentic/config.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-004 | Should fix | Open | Frontend contract boundary | Frontend blindly trusts backend response shapes | `frontend/lib/api.ts`, `frontend/lib/types.ts` | Yellow | High | TBD |
@@ -52,7 +52,7 @@ Implementation work should still follow `AGENTS.md` and
 ### RBUG-001 - Advisory prompt variants bypass agentic preflight
 
 - Severity: Should fix
-- Status: Open
+- Status: In progress
 - Area: Agentic safety
 - Files: `backend/app/agentic/safety.py`
 - Affected behavior: Advisory prompts such as "Should I add Nvidia to my
@@ -67,8 +67,8 @@ Implementation work should still follow `AGENTS.md` and
   equivalent personal-position language.
 - Suggested test coverage: Add unit, pipeline, and API tests asserting these
   prompts fall back before `OpenAIResearchClient` is constructed or called.
-- Overlap risk: Red - overlaps active agentic backend/runtime work. Implementation
-  should wait until PR #27 lands or coordinate with its owner.
+- Overlap risk: Red - protected agentic safety surface. PR #27 has landed, so
+  this scoped follow-up can intentionally address only the preflight matcher.
 - Confidence: High
 - Source review note: Full-codebase review found direct false negatives in the
   agentic safety matcher.

@@ -55,11 +55,24 @@ class AgenticPipelineTest(unittest.TestCase):
 
     def test_forbidden_question_falls_back_before_openai_client(self) -> None:
         questions = [
+            "Should I add Nvidia to my portfolio?",
+            "Should I trim my Nvidia position?",
+            "Which bank stock should I purchase?",
+            "Is RY worth buying?",
+            "Should I take profits on Nvidia?",
             "Should I buy Nvidia?",
+            "Should I buy more TD?",
+            "Should I sell my Royal Bank shares?",
+            "Should I average down?",
+            "Should I increase my position size?",
+            "What percentage of my portfolio should be in Canadian banks?",
             "What is the price target for RY?",
+            "What price target do you have for Nvidia?",
+            "What is a fair price target for RY?",
             "What's your target price on RY?",
             "Give me a PT for Nvidia.",
             "How much of my portfolio should I put in Nvidia?",
+            "Rank these stocks for me to buy.",
         ]
 
         for question in questions:
@@ -80,6 +93,62 @@ class AgenticPipelineTest(unittest.TestCase):
                 self.assertEqual(
                     run.scenario,
                     CANADIAN_BANKS_RESEARCH_RUN.scenario,
+                )
+                diagnostics = get_agentic_diagnostics()
+                self.assertEqual(
+                    diagnostics["lastFallbackStage"],
+                    "input_safety",
+                )
+                self.assertEqual(
+                    diagnostics["lastFallbackReason"],
+                    "forbidden_input",
+                )
+
+    def test_safe_research_questions_enter_mocked_agentic_path(self) -> None:
+        questions = [
+            "How could higher interest rates affect Canadian bank fundamentals?",
+            "Map the transmission channels from oil prices to airline margins.",
+            "What valuation drivers could be affected by AI capex?",
+            "Explain the sector-level risks of tighter monetary policy.",
+            "Compare possible fundamental impacts across Canadian banks.",
+            (
+                "What open questions would an analyst investigate after a "
+                "policy-rate shock?"
+            ),
+        ]
+
+        for question in questions:
+            with self.subTest(question=question):
+                valid_run = _valid_agentic_run(question=question)
+                client = _FakeClient(_valid_stage_responses(valid_run))
+
+                with patch(
+                    "app.orchestrator.fetch_policy_rate_chart",
+                    return_value=None,
+                ):
+                    run = run_agentic_research_pipeline(
+                        ResearchRunRequest(question=question),
+                        config=_config(
+                            enabled=True,
+                            api_key="test-openai-key",
+                        ),
+                        client=client,
+                    )
+
+                self.assertEqual(run.question, question)
+                self.assertEqual(
+                    run.scenario,
+                    "Agentic beta macro transmission",
+                )
+                self.assertEqual(
+                    client.stage_names,
+                    [
+                        "agentic_planner",
+                        "agentic_source_research",
+                        "agentic_framework",
+                        "agentic_skeptic",
+                        "agentic_synthesis",
+                    ],
                 )
 
     def test_mocked_valid_agentic_output_returns_research_run(self) -> None:
