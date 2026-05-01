@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  ArrowRight,
   BarChart3,
   Blocks,
   CircuitBoard,
@@ -307,60 +308,32 @@ export function ResearchDashboard() {
 }
 
 const reviewPathSteps = [
-  {
-    step: "01",
-    label: "Thesis / judgment",
-    description: "Start with the summary and current interpretation.",
-  },
-  {
-    step: "02",
-    label: "Transmission map",
-    description: "Inspect how the shock moves through drivers.",
-  },
-  {
-    step: "03",
-    label: "Evidence board",
-    description:
-      "Verify Data, Source claim, Framework inference, Narrative signal, and Open question tags.",
-  },
-  {
-    step: "04",
-    label: "Memo / open questions",
-    description: "Synthesize the memo and unresolved checks.",
-  },
+  "Thesis / judgment",
+  "Transmission map",
+  "Evidence board",
+  "Memo / open questions",
 ];
 
 function ReviewPathGuide() {
   return (
-    <section className="rounded-lg border border-white/10 bg-zinc-950/70 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">How to read this run</Badge>
-          <span className="text-sm text-muted-foreground">
-            Review the artifacts in order.
-          </span>
+    <section className="flex flex-col gap-2 rounded-lg border border-white/10 bg-zinc-950/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">Review path</Badge>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm text-zinc-100">
+          {reviewPathSteps.map((item, index) => (
+            <div key={item} className="flex items-center gap-1.5">
+              <span>{item}</span>
+              {index < reviewPathSteps.length - 1 ? (
+                <ArrowRight className="size-3.5 text-cyan-300/70" />
+              ) : null}
+            </div>
+          ))}
         </div>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-        {reviewPathSteps.map((item) => (
-          <div
-            key={item.step}
-            className="rounded-md border border-white/10 bg-black/25 p-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-cyan-300">
-                {item.step}
-              </span>
-              <span className="text-sm font-semibold text-zinc-50">
-                {item.label}
-              </span>
-            </div>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        ))}
-      </div>
+      <span className="text-xs leading-5 text-muted-foreground sm:text-right">
+        Review interpretation, then inspect mechanism, evidence, and unresolved
+        checks.
+      </span>
     </section>
   );
 }
