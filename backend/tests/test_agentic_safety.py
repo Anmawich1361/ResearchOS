@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from app.agentic.safety import (
     contains_forbidden_advisory_intent,
@@ -14,10 +15,20 @@ class AgenticSafetyTest(unittest.TestCase):
     def test_advisory_intent_helper_detects_direct_prompts(self) -> None:
         prompts = [
             "Should I buy Nvidia?",
+            "Should I buy more TD?",
             "Should we sell Canadian banks?",
+            "Should I sell my Royal Bank shares?",
             "Should I hold Apple?",
             "Should I short Tesla?",
             "Should I accumulate Microsoft?",
+            "Should I add Nvidia to my portfolio?",
+            "Should I trim my Nvidia position?",
+            "Which bank stock should I purchase?",
+            "Is RY worth buying?",
+            "Should I take profits on Nvidia?",
+            "Should I average down?",
+            "Should I increase my position size?",
+            "Rank these stocks for me to buy.",
             "Should investors buy Nvidia?",
             "Would you buy the stock?",
             "Would you sell the stock?",
@@ -37,6 +48,8 @@ class AgenticSafetyTest(unittest.TestCase):
     ) -> None:
         prompts = [
             "What is the price target for RY?",
+            "What price target do you have for Nvidia?",
+            "What is a fair price target for RY?",
             "What's your target price on RY?",
             "Target price for Nvidia?",
             "Target price of Apple?",
@@ -71,11 +84,31 @@ class AgenticSafetyTest(unittest.TestCase):
             "How large should my position be in Tesla?",
             "Should I overweight or underweight RY in my portfolio?",
             "Should I allocate 20% of my portfolio to Nvidia?",
+            "What percentage of my portfolio should be in Canadian banks?",
         ]
 
         for prompt in prompts:
             with self.subTest(prompt=prompt):
                 self.assertTrue(contains_forbidden_research_intent(prompt))
+
+    def test_research_intent_helper_allows_safe_research_prompts(
+        self,
+    ) -> None:
+        prompts = [
+            "How could higher interest rates affect Canadian bank fundamentals?",
+            "Map the transmission channels from oil prices to airline margins.",
+            "What valuation drivers could be affected by AI capex?",
+            "Explain the sector-level risks of tighter monetary policy.",
+            "Compare possible fundamental impacts across Canadian banks.",
+            (
+                "What open questions would an analyst investigate after a "
+                "policy-rate shock?"
+            ),
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertFalse(contains_forbidden_research_intent(prompt))
 
     def test_research_intent_helper_allows_analytical_allocation_prompts(
         self,
@@ -162,6 +195,22 @@ class AgenticSafetyTest(unittest.TestCase):
             result.reasons,
         )
 
+    def test_forbidden_position_management_language_fails(self) -> None:
+        run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
+            deep=True,
+            update={"headline": "Investors should take profits on Nvidia."},
+        )
+
+        run = _without_data_evidence(run)
+
+        result = validate_agentic_research_run(run)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "forbidden recommendation or price-target language",
+            result.reasons,
+        )
+
     def test_forbidden_portfolio_allocation_language_fails(self) -> None:
         run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
             deep=True,
@@ -218,11 +267,15 @@ class AgenticSafetyTest(unittest.TestCase):
     def test_deterministic_research_run_can_still_use_data_evidence(
         self,
     ) -> None:
-        run = run_research_pipeline(
-            ResearchRunRequest(
-                question="How would rate cuts affect Canadian banks?"
+        with patch(
+            "app.orchestrator.fetch_policy_rate_chart",
+            return_value=None,
+        ):
+            run = run_research_pipeline(
+                ResearchRunRequest(
+                    question="How would rate cuts affect Canadian banks?"
+                )
             )
-        )
 
         self.assertTrue(any(item.type == "Data" for item in run.evidence))
 

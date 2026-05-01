@@ -45,31 +45,77 @@ PERSONAL_ALLOCATION_CONTEXT = (
 FORBIDDEN_RESEARCH_INTENT_PATTERNS = [
     re.compile(
         r"\bshould\s+(i|we|you|investors?)\s+"
-        r"(buy|sell|hold|short|accumulate)\b",
+        r"(buy|sell|hold|short|accumulate|purchase)\b",
         re.I,
     ),
     re.compile(
         r"\b(i|we|you|investors?)\s+should\s+"
-        r"(buy|sell|hold|short|accumulate)\b",
+        r"(buy|sell|hold|short|accumulate|purchase)\b",
         re.I,
     ),
     re.compile(
-        r"\bwould\s+you\s+(buy|sell|hold|short|accumulate)\b",
+        r"\bwould\s+you\s+(buy|sell|hold|short|accumulate|purchase)\b",
         re.I,
     ),
     re.compile(
         r"\bdo\s+you\s+recommend\s+"
-        r"(buying|selling|holding|shorting|accumulating)\b",
+        r"(buying|selling|holding|shorting|accumulating|purchasing)\b",
         re.I,
     ),
     re.compile(
         r"\brecommend(?:ed|s)?\s+"
-        r"(buying|selling|holding|shorting|accumulating)\b",
+        r"(buying|selling|holding|shorting|accumulating|purchasing)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bshould\s+(?:i|we|you|investors?)\s+"
+        r"(?:add|trim|reduce|increase)\b.{0,80}\b"
+        r"(?:portfolio|position|position\s+size|shares?|stock|equity|"
+        r"exposure|holding|stake)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bshould\s+(?:i|we|you|investors?)\s+"
+        r"(?:take\s+profits?|average\s+down)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\b(?:i|we|you|investors?)\s+should\s+"
+        r"(?:take\s+profits?|average\s+down)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwhich\b.{0,80}\b"
+        r"(?:stocks?|shares?|equities|equity|bank\s+stocks?|names?)\b"
+        r".{0,80}\bshould\s+(?:i|we|you|investors?)\s+"
+        r"(?:buy|purchase|sell|hold|short|own)\b",
         re.I,
     ),
     re.compile(
         r"\bis\s+.{1,80}?\s+(a|an)\s+"
         r"(buy|sell|hold|short|accumulate)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bis\s+.{1,80}?\s+worth\s+"
+        r"(?:buying|purchasing|selling|holding|owning)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\brank\b.{0,80}\b"
+        r"(?:stocks?|shares?|equities|equity|names?|companies)\b"
+        r".{0,80}\b(?:for\s+(?:me|us)\s+to|to)\s+"
+        r"(?:buy|purchase|sell|hold|own)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwhat\s+(?:price target|target price)\s+"
+        r"do\s+you\s+have\s+(?:for|on|of)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bwhat\s+(?:is|'s|are)\s+(?:the\s+|a\s+)?fair\s+"
+        r"(?:price target|target price)\s+(?:for|on|of)\b",
         re.I,
     ),
     re.compile(

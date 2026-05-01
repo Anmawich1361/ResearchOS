@@ -167,11 +167,15 @@ class AgenticEvalHarnessTest(unittest.TestCase):
                 self.assertNotIn(marker.lower(), encoded)
 
     def test_deterministic_research_run_still_allows_data_evidence(self) -> None:
-        run = run_research_pipeline(
-            ResearchRunRequest(
-                question="How would rate cuts affect Canadian banks?"
+        with patch(
+            "app.orchestrator.fetch_policy_rate_chart",
+            return_value=None,
+        ):
+            run = run_research_pipeline(
+                ResearchRunRequest(
+                    question="How would rate cuts affect Canadian banks?"
+                )
             )
-        )
 
         self.assertTrue(any(item.type == "Data" for item in run.evidence))
 
