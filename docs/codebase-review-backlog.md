@@ -41,7 +41,7 @@ Implementation work should still follow `AGENTS.md` and
 | RBUG-002 | Should fix | Open | Agentic trust / frontend evidence display | Model-authored source claims can appear provenance-verified | `backend/app/agentic/models.py`, `frontend/components/EvidenceBoard.tsx` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-003 | Should fix | Open | Agentic reliability | Agentic request path can block synchronously for too long | `backend/app/agentic/pipeline.py`, `backend/app/agentic/config.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-004 | Should fix | Open | Frontend contract boundary | Frontend blindly trusts backend response shapes | `frontend/lib/api.ts`, `frontend/lib/types.ts` | Yellow | High | TBD |
-| RBUG-005 | Should fix | Open | Frontend source observability | Source status marks healthy non-BoC runs as fallback | `frontend/components/ResearchDashboard.tsx`, `frontend/components/ResearchSourceStatus.tsx` | Yellow | High | TBD |
+| RBUG-005 | Should fix | In progress | Frontend source observability | Source status marks healthy non-BoC runs as fallback | `frontend/components/ResearchDashboard.tsx`, `frontend/components/ResearchSourceStatus.tsx` | Yellow | High | TBD |
 | RBUG-006 | Should fix | In progress | Frontend fallback state | Frontend fallback discards the submitted question | `frontend/components/ResearchDashboard.tsx` | Green | High | TBD |
 | RBUG-007 | Should fix | Open | Agentic tests / network isolation | Backend tests still hide live BoC access | `backend/tests/test_agentic_eval_harness.py`, `backend/tests/test_agentic_safety.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-008 | Defer | Deferred | Backend maintainability | Legacy deterministic agent modules duplicate unused pipeline logic | `backend/app/agents/` | Green | Medium | TBD |
@@ -145,7 +145,7 @@ Implementation work should still follow `AGENTS.md` and
 ### RBUG-005 - Source status marks healthy non-BoC runs as fallback
 
 - Severity: Should fix
-- Status: Open
+- Status: In progress
 - Area: Frontend source observability
 - Files: `frontend/components/ResearchDashboard.tsx`,
   `frontend/components/ResearchSourceStatus.tsx`

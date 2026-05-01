@@ -52,6 +52,8 @@ export function ResearchDashboard() {
   const [run, setRun] = useState<DemoResearchRun>(demoResearchRun);
   const [question, setQuestion] = useState(demoResearchRun.question);
   const [researchMode, setResearchMode] = useState<ResearchMode>("demo");
+  const [completedResearchMode, setCompletedResearchMode] =
+    useState<ResearchMode | null>(null);
   const [dataSource, setDataSource] =
     useState<ResearchDataSource>("Frontend fallback");
   const [dataStatus, setDataStatus] = useState<ResearchDataStatus | null>(null);
@@ -69,11 +71,12 @@ export function ResearchDashboard() {
   const isAgenticSelected = researchMode === "agentic";
   const activeResearchMode =
     isAgenticSelected && isAgenticAvailable ? "agentic" : "demo";
-  const sourceMode: ResearchSourceMode = !hasRunCompleted
-    ? "ready"
-    : hasOfficialBocData
-      ? "official"
-      : "fallback";
+  const sourceMode = getResearchSourceMode({
+    hasRunCompleted,
+    hasOfficialBocData,
+    dataSource,
+    completedResearchMode,
+  });
 
   const refreshDataStatus = useCallback(async () => {
     try {
@@ -123,17 +126,20 @@ export function ResearchDashboard() {
 
   const runQuestion = useCallback(
     async (nextQuestion: string) => {
+      const runMode = activeResearchMode;
+
       setIsLoading(true);
       setErrorMessage(null);
       setQuestion(nextQuestion);
 
       try {
         const backendRun =
-          activeResearchMode === "agentic"
+          runMode === "agentic"
             ? await runAgenticResearch(nextQuestion)
             : await runResearch(nextQuestion);
         setRun(backendRun);
         setQuestion(backendRun.question);
+        setCompletedResearchMode(runMode);
         setDataSource("Backend response");
         setHasRunCompleted(true);
         void refreshDataStatus();
@@ -142,12 +148,13 @@ export function ResearchDashboard() {
         const fallbackQuestion = nextQuestion.trim() || demoResearchRun.question;
         setRun({ ...demoResearchRun, question: fallbackQuestion });
         setQuestion(fallbackQuestion);
+        setCompletedResearchMode(null);
         setDataSource("Frontend fallback");
         setDataStatus(null);
         setIsDataStatusUnavailable(true);
         setHasRunCompleted(true);
         setErrorMessage(
-          activeResearchMode === "agentic"
+          runMode === "agentic"
             ? "Agentic beta unavailable. Showing hardcoded frontend fallback."
             : "Backend unavailable. Showing hardcoded frontend fallback.",
         );
@@ -305,6 +312,36 @@ export function ResearchDashboard() {
       </div>
     </main>
   );
+}
+
+function getResearchSourceMode({
+  hasRunCompleted,
+  hasOfficialBocData,
+  dataSource,
+  completedResearchMode,
+}: {
+  hasRunCompleted: boolean;
+  hasOfficialBocData: boolean;
+  dataSource: ResearchDataSource;
+  completedResearchMode: ResearchMode | null;
+}): ResearchSourceMode {
+  if (!hasRunCompleted) {
+    return "ready";
+  }
+
+  if (dataSource === "Frontend fallback") {
+    return "frontend-fallback";
+  }
+
+  if (hasOfficialBocData) {
+    return "official";
+  }
+
+  if (completedResearchMode === "demo") {
+    return "fixture";
+  }
+
+  return "backend";
 }
 
 const reviewPathSteps = [
