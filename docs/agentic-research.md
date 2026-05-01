@@ -61,8 +61,9 @@ For the first configured-agentic success milestone, the safe target prompt
 `How would a stronger US dollar affect semiconductor earnings?` can use a
 single-pass fast synthesis path when web search is disabled. This path is still
 beta-scoped to `/research/agentic-run`, returns the existing `ResearchRun`
-schema, rejects `Data` evidence, and falls back deterministically if the model
-call times out, returns malformed output, or fails safety validation.
+schema, asks the model only for compact framing fields, rejects `Data`
+evidence, and falls back deterministically if the model call times out,
+returns malformed output, or fails safety validation.
 
 The output must preserve the exact evidence labels:
 

@@ -7,6 +7,7 @@ from app.schemas import (
     ChartPoint,
     ChartSeries,
     EvidenceItem,
+    MemoSection,
     Metric,
     OpenQuestion,
     ResearchJudgment,
@@ -65,9 +66,7 @@ def normalize_fast_synthesis_research_run(
             title="Conditional macro-transmission view",
             stance="Research scenario, not investment advice",
             summary=synthesis.thesis,
-            watchItems=[
-                question.question for question in synthesis.openQuestions[:3]
-            ],
+            watchItems=synthesis.openQuestions[:3],
         ),
         keyDrivers=synthesis.keyDrivers,
         metrics=[
@@ -94,35 +93,20 @@ def normalize_fast_synthesis_research_run(
         transmissionNodes=nodes,
         transmissionEdges=_fast_transmission_edges(nodes),
         charts=_fast_framework_charts(),
-        evidence=[
-            EvidenceItem(
-                claim=item.claim,
-                type=item.type,
-                confidence=item.confidence,
-                importance=item.importance,
-                driver=item.driver,
-                sourceLabel=item.sourceLabel,
-                sourceType=item.sourceType,
-                sourceQuality=item.sourceQuality,
-            )
-            for item in synthesis.evidence
-        ],
-        bullCase=BullBearCase(
-            title=synthesis.bullCaseTitle,
-            points=synthesis.bullCasePoints,
-        ),
-        bearCase=BullBearCase(
-            title=synthesis.bearCaseTitle,
-            points=synthesis.bearCasePoints,
-        ),
-        memo=synthesis.memoSections,
+        evidence=_fast_evidence_items(),
+        bullCase=_fast_bull_case(),
+        bearCase=_fast_bear_case(),
+        memo=_fast_memo_sections(synthesis),
         openQuestions=[
             OpenQuestion(
-                question=item.question,
-                whyItMatters=item.whyItMatters,
-                owner=item.owner,
+                question=item,
+                whyItMatters=(
+                    "It helps separate currency translation from demand, "
+                    "margin, or cycle effects."
+                ),
+                owner="Agentic beta follow-up",
             )
-            for item in synthesis.openQuestions
+            for item in synthesis.openQuestions[:4]
         ],
     )
 
@@ -130,29 +114,95 @@ def normalize_fast_synthesis_research_run(
 def _fast_transmission_nodes(
     synthesis: FastSynthesisStageResult,
 ) -> list[TransmissionNode]:
-    coordinates = [
-        (80, 120),
-        (310, 120),
-        (540, 120),
-        (770, 120),
-        (1000, 120),
+    template = [
+        {
+            "label": "Dollar shock",
+            "subtitle": "USD strengthens versus customer currencies",
+            "driver": "FX translation",
+            "evidenceType": "Framework inference",
+            "confidence": "Medium",
+            "researchImplication": (
+                "Separate reported revenue translation from constant-currency "
+                "demand."
+            ),
+            "whyItMatters": (
+                "Semiconductor revenue is global, so exchange rates can move "
+                "reported growth without changing units."
+            ),
+            "polarity": "negative",
+            "x": 80,
+            "y": 120,
+        },
+        {
+            "label": "Demand channel",
+            "subtitle": "Non-US buyers face local-currency pressure",
+            "driver": "Export demand",
+            "evidenceType": "Framework inference",
+            "confidence": "Medium",
+            "researchImplication": (
+                "Check whether customer budgets, order timing, or mix change "
+                "when the dollar moves."
+            ),
+            "whyItMatters": (
+                "Currency pressure can look like softer end demand if "
+                "local-currency budgets tighten."
+            ),
+            "polarity": "risk",
+            "x": 310,
+            "y": 120,
+        },
+        {
+            "label": "Margin channel",
+            "subtitle": "Pricing power and mix determine offsets",
+            "driver": "Gross margin",
+            "evidenceType": "Framework inference",
+            "confidence": "Medium",
+            "researchImplication": (
+                "Compare product mix, cost base, and pricing power before "
+                "drawing company-specific conclusions."
+            ),
+            "whyItMatters": (
+                "Differentiated chips may absorb FX pressure differently from "
+                "more commoditized exposure."
+            ),
+            "polarity": "mixed",
+            "x": 540,
+            "y": 120,
+        },
+        {
+            "label": "Earnings quality",
+            "subtitle": "Inventory and guidance risk shape interpretation",
+            "driver": "Order timing",
+            "evidenceType": "Open question",
+            "confidence": "Medium",
+            "researchImplication": (
+                "Test whether FX effects coincide with inventory digestion or "
+                "customer pushouts."
+            ),
+            "whyItMatters": (
+                "The same currency shock is more consequential if it arrives "
+                "during a cyclical order slowdown."
+            ),
+            "polarity": "risk",
+            "x": 770,
+            "y": 120,
+        },
     ]
     nodes: list[TransmissionNode] = []
-    for index, point in enumerate(synthesis.transmission):
-        x, y = coordinates[index]
+    for index, point in enumerate(template):
         nodes.append(
             TransmissionNode(
                 id=f"fast-{index + 1}",
-                label=point.label,
-                subtitle=point.subtitle,
-                driver=point.driver,
-                evidenceType=point.evidenceType,
-                confidence=point.confidence,
-                researchImplication=point.researchImplication,
-                whyItMatters=point.whyItMatters,
-                polarity=point.polarity,
-                x=x,
-                y=y,
+                label=point["label"],
+                subtitle=point["subtitle"],
+                driver=point["driver"],
+                evidenceType=point["evidenceType"],
+                confidence=point["confidence"],
+                researchImplication=point["researchImplication"],
+                whyItMatters=point["whyItMatters"],
+                polarity=point["polarity"],
+                x=point["x"],
+                y=point["y"],
             )
         )
     return nodes
@@ -190,6 +240,97 @@ def _fast_framework_charts() -> list[ChartSeries]:
                 ChartPoint(period="USD +10%", value=36, comparison=50),
             ],
         )
+    ]
+
+
+def _fast_evidence_items() -> list[EvidenceItem]:
+    return [
+        EvidenceItem(
+            claim=(
+                "A stronger dollar can pressure reported semiconductor "
+                "earnings through translation before changing underlying "
+                "unit demand."
+            ),
+            type="Framework inference",
+            confidence="Medium",
+            importance="High",
+            driver="FX translation",
+            sourceLabel="Agentic framework synthesis",
+            sourceType="Framework-only model synthesis",
+            sourceQuality="Low",
+        ),
+        EvidenceItem(
+            claim=(
+                "Demand risk depends on whether non-US customers absorb the "
+                "currency move, defer orders, or shift mix."
+            ),
+            type="Framework inference",
+            confidence="Medium",
+            importance="High",
+            driver="Export demand",
+            sourceLabel="Agentic framework synthesis",
+            sourceType="Framework-only model synthesis",
+            sourceQuality="Low",
+        ),
+        EvidenceItem(
+            claim=(
+                "Inventory and order timing remain open questions because they "
+                "can amplify or mask currency translation effects."
+            ),
+            type="Open question",
+            confidence="Medium",
+            importance="Medium",
+            driver="Order timing",
+            sourceLabel="Agentic framework synthesis",
+            sourceType="Framework-only model synthesis",
+            sourceQuality="Low",
+        ),
+    ]
+
+
+def _fast_bull_case() -> BullBearCase:
+    return BullBearCase(
+        title="What could cushion the shock",
+        points=[
+            "High pricing power and differentiated products can reduce FX pass-through.",
+            "US-dollar cost structures can offset part of reported translation pressure.",
+        ],
+    )
+
+
+def _fast_bear_case() -> BullBearCase:
+    return BullBearCase(
+        title="What could amplify the shock",
+        points=[
+            "Local-currency customer budgets may weaken while reported revenue translates lower.",
+            "Inventory digestion could make FX pressure look like broader demand weakness.",
+        ],
+    )
+
+
+def _fast_memo_sections(
+    synthesis: FastSynthesisStageResult,
+) -> list[MemoSection]:
+    return [
+        MemoSection(
+            title="Transmission view",
+            body=synthesis.thesis,
+        ),
+        MemoSection(
+            title="Evidence posture",
+            body=(
+                "This beta output is framework-only. It does not use Data "
+                "evidence or independently verified citations."
+            ),
+        ),
+        MemoSection(
+            title="Research next steps",
+            body=(
+                "Separate constant-currency revenue, geographic mix, pricing "
+                "power, and inventory indicators before forming "
+                "company-specific conclusions."
+            ),
+        ),
     ]
 
 

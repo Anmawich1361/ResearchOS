@@ -51,6 +51,7 @@ _logger = logging.getLogger(__name__)
 _FAST_SYNTHESIS_TARGET_QUESTION = (
     "how would a stronger us dollar affect semiconductor earnings?"
 )
+_FAST_SYNTHESIS_MAX_OUTPUT_TOKENS = 2400
 
 
 class AgenticPipelineError(RuntimeError):
@@ -298,6 +299,10 @@ def _run_fast_synthesis_stage(
             ),
             "targetMilestone": "single_pass_fast_beta_success",
         },
+        max_output_tokens=min(
+            config.max_output_tokens,
+            _FAST_SYNTHESIS_MAX_OUTPUT_TOKENS,
+        ),
     )
 
 

@@ -124,6 +124,7 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(run.question, TARGET_QUESTION)
         self.assertEqual(run.scenario, "Agentic beta fast macro transmission")
         self.assertEqual(client.stage_names, ["agentic_fast_synthesis"])
+        self.assertEqual(client.requests[0]["max_output_tokens"], 2400)
         self.assertFalse(any(item.type == "Data" for item in run.evidence))
         self.assertFalse(
             any(node.evidenceType == "Data" for node in run.transmissionNodes)
@@ -225,7 +226,7 @@ class AgenticPipelineTest(unittest.TestCase):
 
     def test_fast_path_data_evidence_falls_back(self) -> None:
         response = _valid_fast_synthesis_response()
-        response["agentic_fast_synthesis"]["evidence"][0]["type"] = "Data"
+        response["agentic_fast_synthesis"]["evidence"] = [{"type": "Data"}]
         client = _FakeClient(response)
 
         with self.assertLogs("app.agentic.pipeline", level="WARNING"):
@@ -782,169 +783,9 @@ def _valid_fast_synthesis_response(
                 "Gross-margin mix",
                 "Inventory and order timing",
             ],
-            "transmission": [
-                {
-                    "label": "Dollar shock",
-                    "subtitle": "USD strengthens versus customer currencies",
-                    "driver": "FX translation",
-                    "evidenceType": "Framework inference",
-                    "confidence": "Medium",
-                    "researchImplication": (
-                        "Separate reported revenue translation from constant "
-                        "currency demand."
-                    ),
-                    "whyItMatters": (
-                        "Semiconductor revenue is global, so currency moves "
-                        "can change reported growth even when units are stable."
-                    ),
-                    "polarity": "negative",
-                },
-                {
-                    "label": "Demand channel",
-                    "subtitle": "Non-US customers face purchasing-power pressure",
-                    "driver": "Export demand",
-                    "evidenceType": "Framework inference",
-                    "confidence": "Medium",
-                    "researchImplication": (
-                        "Test whether customers defer orders or trade down."
-                    ),
-                    "whyItMatters": (
-                        "A currency shock can look like softer end demand if "
-                        "local-currency budgets tighten."
-                    ),
-                    "polarity": "risk",
-                },
-                {
-                    "label": "Margin channel",
-                    "subtitle": "Pricing, cost base, and mix determine offset",
-                    "driver": "Gross margin",
-                    "evidenceType": "Framework inference",
-                    "confidence": "Medium",
-                    "researchImplication": (
-                        "Compare pricing power with geographic and product mix."
-                    ),
-                    "whyItMatters": (
-                        "High-value chips may offset FX pressure better than "
-                        "more commoditized exposure."
-                    ),
-                    "polarity": "mixed",
-                },
-                {
-                    "label": "Earnings quality",
-                    "subtitle": "Inventory and guidance risk shape interpretation",
-                    "driver": "Order timing",
-                    "evidenceType": "Open question",
-                    "confidence": "Medium",
-                    "researchImplication": (
-                        "Watch whether FX effects coincide with inventory "
-                        "digestion or customer pushouts."
-                    ),
-                    "whyItMatters": (
-                        "The same currency shock is more consequential if it "
-                        "arrives during a cyclical order slowdown."
-                    ),
-                    "polarity": "risk",
-                },
-            ],
-            "evidence": [
-                {
-                    "claim": (
-                        "Reported semiconductor revenue can diverge from "
-                        "constant-currency demand when the dollar strengthens."
-                    ),
-                    "type": "Framework inference",
-                    "confidence": "Medium",
-                    "importance": "High",
-                    "driver": "FX translation",
-                    "sourceLabel": "Framework-only synthesis",
-                    "sourceType": "Agentic framework inference",
-                    "sourceQuality": "Medium",
-                },
-                {
-                    "claim": (
-                        "Pricing power and product mix can partly offset "
-                        "currency pressure, but the offset is company-specific."
-                    ),
-                    "type": "Framework inference",
-                    "confidence": "Medium",
-                    "importance": "High",
-                    "driver": "Gross margin",
-                    "sourceLabel": "Framework-only synthesis",
-                    "sourceType": "Agentic framework inference",
-                    "sourceQuality": "Medium",
-                },
-                {
-                    "claim": (
-                        "A dollar shock is harder to interpret when inventory "
-                        "digestion and order pushouts are also present."
-                    ),
-                    "type": "Open question",
-                    "confidence": "Medium",
-                    "importance": "Medium",
-                    "driver": "Order timing",
-                    "sourceLabel": "Framework-only synthesis",
-                    "sourceType": "Agentic open question",
-                    "sourceQuality": "Low",
-                },
-            ],
-            "bullCaseTitle": "What could cushion the shock",
-            "bullCasePoints": [
-                "High pricing power and differentiated products reduce FX pass-through.",
-                "US-dollar cost structures can offset part of translation pressure.",
-            ],
-            "bearCaseTitle": "What could amplify the shock",
-            "bearCasePoints": [
-                "Local-currency customer budgets weaken at the same time reported revenue translates lower.",
-                "Inventory corrections make FX pressure look like broader demand weakness.",
-            ],
-            "memoSections": [
-                {
-                    "title": "Transmission view",
-                    "body": (
-                        "A stronger dollar first affects reported revenue "
-                        "translation, then customer purchasing power, then "
-                        "margin interpretation."
-                    ),
-                },
-                {
-                    "title": "Evidence posture",
-                    "body": (
-                        "This beta output is framework-only and does not use "
-                        "independently verified Data evidence."
-                    ),
-                },
-                {
-                    "title": "Research next steps",
-                    "body": (
-                        "Separate constant-currency revenue, geographic mix, "
-                        "pricing power, and inventory indicators before "
-                        "forming company-specific conclusions."
-                    ),
-                },
-            ],
             "openQuestions": [
-                {
-                    "question": (
-                        "How much revenue is exposed to non-US customer "
-                        "currencies?"
-                    ),
-                    "whyItMatters": (
-                        "It separates translation risk from underlying unit "
-                        "demand."
-                    ),
-                    "owner": "Source research",
-                },
-                {
-                    "question": (
-                        "Are inventory corrections already visible in orders "
-                        "or guidance?"
-                    ),
-                    "whyItMatters": (
-                        "Inventory pressure could amplify the earnings impact "
-                        "of a currency shock."
-                    ),
-                    "owner": "Skeptic",
-                },
+                "How much revenue is exposed to non-US customer currencies?",
+                "Are inventory corrections already visible in orders or guidance?",
             ],
         }
     }

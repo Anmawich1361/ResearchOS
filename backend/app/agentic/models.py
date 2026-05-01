@@ -1,17 +1,15 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import (
     BullBearCase,
     EvidenceItem,
-    MemoSection,
     OpenQuestion,
     ResearchRun,
     TransmissionEdge,
     TransmissionNode,
 )
-from app.schemas.research_run import Confidence, Polarity
 
 
 class PlannerStageResult(BaseModel):
@@ -54,56 +52,13 @@ class SynthesisStageResult(BaseModel):
     researchRun: ResearchRun
 
 
-FastEvidenceType = Literal[
-    "Framework inference",
-    "Narrative signal",
-    "Open question",
-]
-
-
-class FastTransmissionPoint(BaseModel):
-    label: str
-    subtitle: str
-    driver: str
-    evidenceType: FastEvidenceType
-    confidence: Confidence
-    researchImplication: str
-    whyItMatters: str
-    polarity: Polarity
-
-
-class FastEvidenceClaim(BaseModel):
-    claim: str
-    type: FastEvidenceType
-    confidence: Confidence
-    importance: Literal["Low", "Medium", "High"]
-    driver: str
-    sourceLabel: str
-    sourceType: str
-    sourceQuality: Literal["Medium", "Low"]
-
-
-class FastOpenQuestion(BaseModel):
-    question: str
-    whyItMatters: str
-    owner: str
-
-
 class FastSynthesisStageResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     researchType: str
     shock: str
-    affectedEntities: list[str] = Field(min_length=1, max_length=5)
+    affectedEntities: list[str] = Field(min_length=1, max_length=3)
     headline: str
     thesis: str
-    keyDrivers: list[str] = Field(min_length=3, max_length=6)
-    transmission: list[FastTransmissionPoint] = Field(
-        min_length=3,
-        max_length=5,
-    )
-    evidence: list[FastEvidenceClaim] = Field(min_length=3, max_length=6)
-    bullCaseTitle: str
-    bullCasePoints: list[str] = Field(min_length=2, max_length=4)
-    bearCaseTitle: str
-    bearCasePoints: list[str] = Field(min_length=2, max_length=4)
-    memoSections: list[MemoSection] = Field(min_length=3, max_length=4)
-    openQuestions: list[FastOpenQuestion] = Field(min_length=2, max_length=5)
+    keyDrivers: list[str] = Field(min_length=3, max_length=4)
+    openQuestions: list[str] = Field(min_length=2, max_length=4)

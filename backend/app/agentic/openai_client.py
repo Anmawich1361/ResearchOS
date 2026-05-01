@@ -43,12 +43,17 @@ class OpenAIResearchClient:
         schema: dict[str, Any],
         input_data: dict[str, Any],
         allow_web_search: bool = False,
+        max_output_tokens: int | None = None,
         request_timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self._config.model,
             "store": False,
-            "max_output_tokens": self._config.max_output_tokens,
+            "max_output_tokens": (
+                max_output_tokens
+                if max_output_tokens is not None
+                else self._config.max_output_tokens
+            ),
             "instructions": "\n\n".join(
                 [AGENTIC_SYSTEM_INSTRUCTIONS, instructions]
             ),
