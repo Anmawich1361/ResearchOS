@@ -57,6 +57,13 @@ When web search is disabled, the source stage stays in framework-only mode: it
 may produce compact context notes and open questions, but it must not claim live
 source verification or use `Data` evidence.
 
+For the first configured-agentic success milestone, the safe target prompt
+`How would a stronger US dollar affect semiconductor earnings?` can use a
+single-pass fast synthesis path when web search is disabled. This path is still
+beta-scoped to `/research/agentic-run`, returns the existing `ResearchRun`
+schema, rejects `Data` evidence, and falls back deterministically if the model
+call times out, returns malformed output, or fails safety validation.
+
 The output must preserve the exact evidence labels:
 
 - Data

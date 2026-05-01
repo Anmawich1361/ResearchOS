@@ -16,19 +16,24 @@ from app.agentic.diagnostics import (
     record_agentic_success,
 )
 from app.agentic.models import (
+    FastSynthesisStageResult,
     FrameworkStageResult,
     PlannerStageResult,
     SkepticStageResult,
     SourceResearchResult,
     SynthesisStageResult,
 )
-from app.agentic.normalizer import normalize_agentic_research_run
+from app.agentic.normalizer import (
+    normalize_agentic_research_run,
+    normalize_fast_synthesis_research_run,
+)
 from app.agentic.openai_client import (
     AgenticResearchError,
     OpenAIResearchClient,
 )
 from app.agentic.prompts import (
     FRAMEWORK_PROMPT,
+    FAST_SYNTHESIS_PROMPT,
     PLANNER_PROMPT,
     SKEPTIC_PROMPT,
     SOURCE_RESEARCH_PROMPT,
@@ -43,6 +48,9 @@ from app.schemas import ResearchRun, ResearchRunRequest
 
 
 _logger = logging.getLogger(__name__)
+_FAST_SYNTHESIS_TARGET_QUESTION = (
+    "how would a stronger us dollar affect semiconductor earnings?"
+)
 
 
 class AgenticPipelineError(RuntimeError):
@@ -128,66 +136,81 @@ def _run_configured_agentic_research_pipeline(
     try:
         deadline.raise_if_expired()
         research_client = client or OpenAIResearchClient(resolved_config)
-        current_stage = "planner"
-        planner = _run_planner_stage(
-            research_client,
-            request,
-            resolved_config,
-            deadline,
-        )
-        if planner.scope == "out_of_scope":
-            _record_fallback(
-                run_id=run_id,
-                stage=current_stage,
-                reason="planner_out_of_scope",
-                config=resolved_config,
+        if _should_use_fast_synthesis_path(request, resolved_config):
+            current_stage = "fast_synthesis"
+            synthesis_payload = _run_fast_synthesis_stage(
+                research_client,
+                request,
+                resolved_config,
+                deadline,
             )
-            return fallback_run
+            deadline.raise_if_expired()
+            current_stage = "normalization"
+            run = normalize_fast_synthesis_research_run(
+                synthesis_payload,
+                requested_question=request.question,
+            )
+        else:
+            current_stage = "planner"
+            planner = _run_planner_stage(
+                research_client,
+                request,
+                resolved_config,
+                deadline,
+            )
+            if planner.scope == "out_of_scope":
+                _record_fallback(
+                    run_id=run_id,
+                    stage=current_stage,
+                    reason="planner_out_of_scope",
+                    config=resolved_config,
+                )
+                return fallback_run
 
-        current_stage = "source_research"
-        source_research = _run_source_stage(
-            research_client,
-            request,
-            planner,
-            resolved_config,
-            deadline,
-        )
-        current_stage = "framework"
-        framework = _run_framework_stage(
-            research_client,
-            request,
-            planner,
-            source_research,
-            resolved_config,
-            deadline,
-        )
-        current_stage = "skeptic"
-        skeptic = _run_skeptic_stage(
-            research_client,
-            request,
-            planner,
-            source_research,
-            framework,
-            resolved_config,
-            deadline,
-        )
-        current_stage = "synthesis"
-        synthesis_payload = _run_synthesis_stage(
-            research_client,
-            request,
-            planner,
-            source_research,
-            framework,
-            skeptic,
-            resolved_config,
-            deadline,
-        )
-        deadline.raise_if_expired()
-        current_stage = "normalization"
-        run = normalize_agentic_research_run(
-            synthesis_payload,
-            requested_question=request.question,
-        )
+            current_stage = "source_research"
+            source_research = _run_source_stage(
+                research_client,
+                request,
+                planner,
+                resolved_config,
+                deadline,
+            )
+            current_stage = "framework"
+            framework = _run_framework_stage(
+                research_client,
+                request,
+                planner,
+                source_research,
+                resolved_config,
+                deadline,
+            )
+            current_stage = "skeptic"
+            skeptic = _run_skeptic_stage(
+                research_client,
+                request,
+                planner,
+                source_research,
+                framework,
+                resolved_config,
+                deadline,
+            )
+            current_stage = "synthesis"
+            synthesis_payload = _run_synthesis_stage(
+                research_client,
+                request,
+                planner,
+                source_research,
+                framework,
+                skeptic,
+                resolved_config,
+                deadline,
+            )
+            deadline.raise_if_expired()
+            current_stage = "normalization"
+            run = normalize_agentic_research_run(
+                synthesis_payload,
+                requested_question=request.question,
+            )
         current_stage = "safety"
         safety = validate_agentic_research_run(run)
         if not safety.passed:
@@ -250,6 +273,32 @@ def _run_planner_stage(
         input_data={"question": request.question},
     )
     return _validate_stage(PlannerStageResult, payload, "planner")
+
+
+def _run_fast_synthesis_stage(
+    client: OpenAIResearchClient,
+    request: ResearchRunRequest,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
+) -> dict[str, Any]:
+    return _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
+        stage_name="agentic_fast_synthesis",
+        instructions=FAST_SYNTHESIS_PROMPT,
+        schema=FastSynthesisStageResult.model_json_schema(),
+        input_data={
+            "question": request.question,
+            "webSearchEnabled": config.web_search_enabled,
+            "sourceMode": "framework_only",
+            "agenticEvidencePolicy": (
+                "Use Framework inference, Narrative signal, or Open question. "
+                "Do not use Data evidence in agentic output."
+            ),
+            "targetMilestone": "single_pass_fast_beta_success",
+        },
+    )
 
 
 def _run_source_stage(
@@ -423,6 +472,7 @@ def _fallback_reason_for_stage(stage: str) -> str:
     return {
         "client_setup": "config_unavailable",
         "pipeline": "pipeline_timeout",
+        "fast_synthesis": "fast_synthesis_failed",
         "planner": "planner_failed",
         "source_research": "source_research_failed",
         "framework": "framework_failed",
@@ -488,6 +538,17 @@ def _safe_reason_name(reason: str) -> str:
     safe = reason.lower().replace("/", " ")
     safe = "_".join(part for part in safe.split() if part)
     return safe[:80] or "unknown"
+
+
+def _should_use_fast_synthesis_path(
+    request: ResearchRunRequest,
+    config: AgenticResearchConfig,
+) -> bool:
+    return (
+        not config.web_search_enabled
+        and " ".join(request.question.lower().split())
+        == _FAST_SYNTHESIS_TARGET_QUESTION
+    )
 
 
 class _AgenticPipelineDeadline:

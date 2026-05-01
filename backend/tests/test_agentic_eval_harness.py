@@ -25,6 +25,7 @@ ALLOWED_EVIDENCE_LABELS = {
     "Narrative signal",
     "Open question",
 }
+TARGET_FAST_PROMPT = "How would a stronger US dollar affect semiconductor earnings?"
 
 
 class AgenticEvalHarnessTest(unittest.TestCase):
@@ -81,20 +82,25 @@ class AgenticEvalHarnessTest(unittest.TestCase):
     def test_valid_macro_prompts_enter_mocked_agentic_path(self) -> None:
         for case in VALID_MACRO_TRANSMISSION_CASES:
             with self.subTest(case=case.name):
-                client = _FakeClient(
-                    _stage_responses(_agentic_run_for_prompt(case.prompt))
-                )
+                if case.prompt == TARGET_FAST_PROMPT:
+                    responses = _fast_stage_responses()
+                    expected_scenario = "Agentic beta fast macro transmission"
+                    expected_stages = ["agentic_fast_synthesis"]
+                else:
+                    responses = _stage_responses(
+                        _agentic_run_for_prompt(case.prompt)
+                    )
+                    expected_scenario = "Agentic eval macro transmission"
+                    expected_stages = _EXPECTED_STAGE_NAMES
+                client = _FakeClient(responses)
 
                 run = _run_agentic(case.prompt, client=client)
 
                 self.assertTrue(case.should_call_openai)
                 self.assertFalse(case.fallback_expected)
                 self.assertEqual(run.question, case.prompt)
-                self.assertEqual(
-                    run.scenario,
-                    "Agentic eval macro transmission",
-                )
-                self.assertEqual(client.stage_names, _EXPECTED_STAGE_NAMES)
+                self.assertEqual(run.scenario, expected_scenario)
+                self.assertEqual(client.stage_names, expected_stages)
 
     def test_data_evidence_misuse_falls_back(self) -> None:
         case = DATA_EVIDENCE_MISUSE_CASE
@@ -107,7 +113,11 @@ class AgenticEvalHarnessTest(unittest.TestCase):
             )
         )
 
-        run = _run_agentic(case.prompt, client=client)
+        run = _run_agentic(
+            case.prompt,
+            client=client,
+            web_search_enabled=True,
+        )
 
         self.assertTrue(case.should_call_openai)
         self.assertTrue(case.fallback_expected)
@@ -128,7 +138,11 @@ class AgenticEvalHarnessTest(unittest.TestCase):
             )
         )
 
-        run = _run_agentic(case.prompt, client=client)
+        run = _run_agentic(
+            case.prompt,
+            client=client,
+            web_search_enabled=True,
+        )
 
         self.assertTrue(case.should_call_openai)
         self.assertTrue(case.fallback_expected)
@@ -196,10 +210,15 @@ class _FakeClient:
         return self._responses[stage_name]
 
 
-def _run_agentic(prompt: str, *, client: _FakeClient | None = None) -> ResearchRun:
+def _run_agentic(
+    prompt: str,
+    *,
+    client: _FakeClient | None = None,
+    web_search_enabled: bool = False,
+) -> ResearchRun:
     return run_agentic_research_pipeline(
         ResearchRunRequest(question=prompt),
-        config=_make_agentic_config(),
+        config=_make_agentic_config(web_search_enabled=web_search_enabled),
         client=client,
     )
 
@@ -330,6 +349,130 @@ def _stage_responses(
         "agentic_synthesis": {
             "researchRun": run.model_dump(),
         },
+    }
+
+
+def _fast_stage_responses() -> dict[str, dict[str, object]]:
+    return {
+        "agentic_fast_synthesis": {
+            "researchType": "macro_to_sector_shock",
+            "shock": "stronger US dollar",
+            "affectedEntities": ["semiconductor manufacturers"],
+            "headline": (
+                "Dollar strength can pressure semiconductor earnings through "
+                "translation, demand, mix, and inventory channels."
+            ),
+            "thesis": (
+                "The fast beta path frames dollar strength as a conditional "
+                "earnings headwind, with impact depending on revenue mix, "
+                "pricing power, and order timing."
+            ),
+            "keyDrivers": [
+                "Foreign-revenue translation",
+                "Export demand sensitivity",
+                "Gross-margin mix",
+            ],
+            "transmission": [
+                {
+                    "label": "Dollar shock",
+                    "subtitle": "USD strengthens",
+                    "driver": "FX translation",
+                    "evidenceType": "Framework inference",
+                    "confidence": "Medium",
+                    "researchImplication": "Separate reported and constant-currency revenue.",
+                    "whyItMatters": "Global revenue can translate lower in reported terms.",
+                    "polarity": "negative",
+                },
+                {
+                    "label": "Demand channel",
+                    "subtitle": "Local-currency budgets tighten",
+                    "driver": "Export demand",
+                    "evidenceType": "Framework inference",
+                    "confidence": "Medium",
+                    "researchImplication": "Check order timing and customer geography.",
+                    "whyItMatters": "Currency pressure can resemble softer demand.",
+                    "polarity": "risk",
+                },
+                {
+                    "label": "Margin channel",
+                    "subtitle": "Mix and pricing determine offsets",
+                    "driver": "Gross margin",
+                    "evidenceType": "Framework inference",
+                    "confidence": "Medium",
+                    "researchImplication": "Compare pricing power with product mix.",
+                    "whyItMatters": "Differentiated products may absorb FX pressure better.",
+                    "polarity": "mixed",
+                },
+            ],
+            "evidence": [
+                {
+                    "claim": "Reported revenue can diverge from constant-currency demand.",
+                    "type": "Framework inference",
+                    "confidence": "Medium",
+                    "importance": "High",
+                    "driver": "FX translation",
+                    "sourceLabel": "Framework-only synthesis",
+                    "sourceType": "Agentic framework inference",
+                    "sourceQuality": "Medium",
+                },
+                {
+                    "claim": "Pricing power can partly offset currency pressure.",
+                    "type": "Framework inference",
+                    "confidence": "Medium",
+                    "importance": "High",
+                    "driver": "Gross margin",
+                    "sourceLabel": "Framework-only synthesis",
+                    "sourceType": "Agentic framework inference",
+                    "sourceQuality": "Medium",
+                },
+                {
+                    "claim": "Inventory timing remains an open question.",
+                    "type": "Open question",
+                    "confidence": "Medium",
+                    "importance": "Medium",
+                    "driver": "Order timing",
+                    "sourceLabel": "Framework-only synthesis",
+                    "sourceType": "Agentic open question",
+                    "sourceQuality": "Low",
+                },
+            ],
+            "bullCaseTitle": "Potential cushions",
+            "bullCasePoints": [
+                "Differentiated products preserve pricing power.",
+                "US-dollar cost structures offset some translation pressure.",
+            ],
+            "bearCaseTitle": "Potential amplifiers",
+            "bearCasePoints": [
+                "Customer budgets weaken in local currency.",
+                "Inventory digestion amplifies reported weakness.",
+            ],
+            "memoSections": [
+                {
+                    "title": "Transmission",
+                    "body": "Dollar strength affects translation, demand, and margins.",
+                },
+                {
+                    "title": "Evidence posture",
+                    "body": "This is framework-only and uses no Data evidence.",
+                },
+                {
+                    "title": "Next checks",
+                    "body": "Review currency mix, pricing power, and order timing.",
+                },
+            ],
+            "openQuestions": [
+                {
+                    "question": "How large is non-US revenue exposure?",
+                    "whyItMatters": "It sizes translation risk.",
+                    "owner": "Source research",
+                },
+                {
+                    "question": "Are orders already slowing?",
+                    "whyItMatters": "It separates FX from demand.",
+                    "owner": "Skeptic",
+                },
+            ],
+        }
     }
 
 

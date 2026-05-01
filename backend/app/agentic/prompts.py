@@ -67,3 +67,20 @@ data, unless independently verified citation tooling is added in a future
 milestone.
 Do not add schema fields.
 """.strip()
+
+
+FAST_SYNTHESIS_PROMPT = """
+Produce a compact single-pass ResearchOS beta synthesis for the target question.
+This is a framework-only beta path when web search is disabled: do not claim
+live source retrieval, official-source verification, or measured data.
+
+Return concise fields that can be normalized into the existing ResearchRun
+schema. Use only these evidence labels for transmission points and evidence:
+Framework inference, Narrative signal, Open question.
+
+Do not use Data evidence. Do not produce buy/sell recommendations, price
+targets, personalized advice, portfolio allocation, or position-sizing
+language. Keep claims conditional and uncertainty-aware. Focus on how a stronger
+US dollar transmits into semiconductor revenue translation, demand, margins,
+inventory, and earnings-quality questions.
+""".strip()
