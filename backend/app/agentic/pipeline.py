@@ -1,4 +1,6 @@
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Any
 
 from pydantic import ValidationError
@@ -8,6 +10,7 @@ from app.agentic.config import (
     get_agentic_research_config,
 )
 from app.agentic.diagnostics import (
+    close_agentic_run,
     mark_agentic_run_started,
     record_agentic_fallback,
     record_agentic_success,
@@ -46,6 +49,10 @@ class AgenticPipelineError(RuntimeError):
     pass
 
 
+class AgenticPipelineTimeout(TimeoutError):
+    pass
+
+
 def run_agentic_research_pipeline(
     request: ResearchRunRequest,
     *,
@@ -54,10 +61,11 @@ def run_agentic_research_pipeline(
 ) -> ResearchRun:
     resolved_config = config or get_agentic_research_config()
     fallback_run = run_research_pipeline(request)
-    mark_agentic_run_started()
+    run_id = mark_agentic_run_started()
 
     if contains_forbidden_research_intent(request.question):
         _record_fallback(
+            run_id=run_id,
             stage="input_safety",
             reason="forbidden_input",
             config=resolved_config,
@@ -66,19 +74,70 @@ def run_agentic_research_pipeline(
 
     if not resolved_config.available:
         _record_fallback(
+            run_id=run_id,
             stage="config",
             reason="config_unavailable",
             config=resolved_config,
         )
         return fallback_run
 
-    current_stage = "client_setup"
+    executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="researchos-agentic-pipeline",
+    )
+    future = executor.submit(
+        _run_configured_agentic_research_pipeline,
+        request,
+        fallback_run,
+        resolved_config,
+        client,
+        run_id,
+    )
     try:
+        run = future.result(
+            timeout=resolved_config.pipeline_timeout_seconds
+        )
+    except FutureTimeout:
+        future.cancel()
+        _record_fallback(
+            run_id=run_id,
+            stage="pipeline",
+            reason="pipeline_timeout",
+            config=resolved_config,
+            error_type="TimeoutError",
+        )
+        close_agentic_run(run_id)
+        return fallback_run
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    return run
+
+
+def _run_configured_agentic_research_pipeline(
+    request: ResearchRunRequest,
+    fallback_run: ResearchRun,
+    resolved_config: AgenticResearchConfig,
+    client: OpenAIResearchClient | None,
+    run_id: str,
+) -> ResearchRun:
+    current_stage = "client_setup"
+    deadline = _AgenticPipelineDeadline(
+        timeout_seconds=resolved_config.pipeline_timeout_seconds
+    )
+    try:
+        deadline.raise_if_expired()
         research_client = client or OpenAIResearchClient(resolved_config)
         current_stage = "planner"
-        planner = _run_planner_stage(research_client, request)
+        planner = _run_planner_stage(
+            research_client,
+            request,
+            resolved_config,
+            deadline,
+        )
         if planner.scope == "out_of_scope":
             _record_fallback(
+                run_id=run_id,
                 stage=current_stage,
                 reason="planner_out_of_scope",
                 config=resolved_config,
@@ -91,6 +150,7 @@ def run_agentic_research_pipeline(
             request,
             planner,
             resolved_config,
+            deadline,
         )
         current_stage = "framework"
         framework = _run_framework_stage(
@@ -98,6 +158,8 @@ def run_agentic_research_pipeline(
             request,
             planner,
             source_research,
+            resolved_config,
+            deadline,
         )
         current_stage = "skeptic"
         skeptic = _run_skeptic_stage(
@@ -106,6 +168,8 @@ def run_agentic_research_pipeline(
             planner,
             source_research,
             framework,
+            resolved_config,
+            deadline,
         )
         current_stage = "synthesis"
         synthesis_payload = _run_synthesis_stage(
@@ -115,7 +179,10 @@ def run_agentic_research_pipeline(
             source_research,
             framework,
             skeptic,
+            resolved_config,
+            deadline,
         )
+        deadline.raise_if_expired()
         current_stage = "normalization"
         run = normalize_agentic_research_run(
             synthesis_payload,
@@ -125,14 +192,37 @@ def run_agentic_research_pipeline(
         safety = validate_agentic_research_run(run)
         if not safety.passed:
             _record_fallback(
+                run_id=run_id,
                 stage=current_stage,
                 reason="safety_failed",
                 config=resolved_config,
                 safety_reasons=safety.reasons,
             )
             return fallback_run
-    except Exception as exc:
+    except AgenticPipelineTimeout as exc:
         _record_fallback(
+            run_id=run_id,
+            stage="pipeline",
+            reason="pipeline_timeout",
+            config=resolved_config,
+            error_type=type(exc).__name__,
+        )
+        return fallback_run
+    except Exception as exc:
+        if deadline.expired or _should_treat_as_pipeline_timeout(
+            deadline,
+            exc,
+        ):
+            _record_fallback(
+                run_id=run_id,
+                stage="pipeline",
+                reason="pipeline_timeout",
+                config=resolved_config,
+                error_type="TimeoutError",
+            )
+            return fallback_run
+        _record_fallback(
+            run_id=run_id,
             stage=current_stage,
             reason=_fallback_reason_for_exception(current_stage, exc),
             config=resolved_config,
@@ -140,15 +230,20 @@ def run_agentic_research_pipeline(
         )
         return fallback_run
 
-    record_agentic_success()
+    record_agentic_success(run_id=run_id)
     return run
 
 
 def _run_planner_stage(
     client: OpenAIResearchClient,
     request: ResearchRunRequest,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
 ) -> PlannerStageResult:
-    payload = client.create_structured_response(
+    payload = _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
         stage_name="agentic_planner",
         instructions=PLANNER_PROMPT,
         schema=PlannerStageResult.model_json_schema(),
@@ -162,14 +257,22 @@ def _run_source_stage(
     request: ResearchRunRequest,
     planner: PlannerStageResult,
     config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
 ) -> SourceResearchResult:
-    payload = client.create_structured_response(
+    payload = _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
         stage_name="agentic_source_research",
         instructions=SOURCE_RESEARCH_PROMPT,
         schema=SourceResearchResult.model_json_schema(),
         input_data={
             "question": request.question,
             "planner": planner.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "sourceMode": (
+                "web_search" if config.web_search_enabled else "framework_only"
+            ),
         },
         allow_web_search=config.web_search_enabled,
     )
@@ -181,8 +284,13 @@ def _run_framework_stage(
     request: ResearchRunRequest,
     planner: PlannerStageResult,
     source_research: SourceResearchResult,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
 ) -> FrameworkStageResult:
-    payload = client.create_structured_response(
+    payload = _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
         stage_name="agentic_framework",
         instructions=FRAMEWORK_PROMPT,
         schema=FrameworkStageResult.model_json_schema(),
@@ -190,6 +298,12 @@ def _run_framework_stage(
             "question": request.question,
             "planner": planner.model_dump(),
             "sourceResearch": source_research.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
     return _validate_stage(FrameworkStageResult, payload, "framework")
@@ -201,8 +315,13 @@ def _run_skeptic_stage(
     planner: PlannerStageResult,
     source_research: SourceResearchResult,
     framework: FrameworkStageResult,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
 ) -> SkepticStageResult:
-    payload = client.create_structured_response(
+    payload = _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
         stage_name="agentic_skeptic",
         instructions=SKEPTIC_PROMPT,
         schema=SkepticStageResult.model_json_schema(),
@@ -211,6 +330,11 @@ def _run_skeptic_stage(
             "planner": planner.model_dump(),
             "sourceResearch": source_research.model_dump(),
             "framework": framework.model_dump(),
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
     return _validate_stage(SkepticStageResult, payload, "skeptic")
@@ -223,8 +347,13 @@ def _run_synthesis_stage(
     source_research: SourceResearchResult,
     framework: FrameworkStageResult,
     skeptic: SkepticStageResult,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
 ) -> dict[str, Any]:
-    return client.create_structured_response(
+    return _create_structured_response_with_deadline(
+        client,
+        config,
+        deadline,
         stage_name="agentic_synthesis",
         instructions=SYNTHESIS_PROMPT,
         schema=SynthesisStageResult.model_json_schema(),
@@ -234,8 +363,47 @@ def _run_synthesis_stage(
             "sourceResearch": source_research.model_dump(),
             "framework": framework.model_dump(),
             "skeptic": skeptic.model_dump(),
+            "webSearchEnabled": config.web_search_enabled,
+            "agenticEvidencePolicy": (
+                "Use Source claim, Framework inference, Narrative signal, "
+                "or Open question. Do not use Data evidence in agentic "
+                "output."
+            ),
         },
     )
+
+
+def _create_structured_response_with_deadline(
+    client: OpenAIResearchClient,
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    request_timeout_seconds = _request_timeout_seconds(config, deadline)
+    try:
+        payload = client.create_structured_response(
+            **kwargs,
+            request_timeout_seconds=request_timeout_seconds,
+        )
+    except AgenticResearchError as exc:
+        if exc.reason == "timeout" and deadline.expired:
+            raise AgenticPipelineTimeout(
+                "Agentic pipeline deadline exceeded during model call"
+            ) from exc
+        raise
+
+    deadline.raise_if_expired()
+    return payload
+
+
+def _request_timeout_seconds(
+    config: AgenticResearchConfig,
+    deadline: "_AgenticPipelineDeadline",
+) -> float:
+    remaining_seconds = deadline.remaining_seconds
+    if remaining_seconds <= 0:
+        raise AgenticPipelineTimeout("Agentic pipeline deadline exceeded")
+    return min(config.timeout_seconds, remaining_seconds)
 
 
 def _validate_stage(
@@ -254,6 +422,7 @@ def _validate_stage(
 def _fallback_reason_for_stage(stage: str) -> str:
     return {
         "client_setup": "config_unavailable",
+        "pipeline": "pipeline_timeout",
         "planner": "planner_failed",
         "source_research": "source_research_failed",
         "framework": "framework_failed",
@@ -270,8 +439,20 @@ def _fallback_reason_for_exception(stage: str, exc: Exception) -> str:
     return _fallback_reason_for_stage(stage)
 
 
+def _should_treat_as_pipeline_timeout(
+    deadline: "_AgenticPipelineDeadline",
+    exc: Exception,
+) -> bool:
+    return (
+        deadline.expired
+        and isinstance(exc, AgenticResearchError)
+        and exc.reason == "timeout"
+    )
+
+
 def _record_fallback(
     *,
+    run_id: str,
     stage: str,
     reason: str,
     config: AgenticResearchConfig,
@@ -281,11 +462,14 @@ def _record_fallback(
     safe_safety_reasons = tuple(
         _safe_reason_name(reason_text) for reason_text in safety_reasons
     )
-    record_agentic_fallback(
+    recorded = record_agentic_fallback(
+        run_id=run_id,
         reason=reason,
         stage=stage,
         error_type=error_type,
     )
+    if not recorded:
+        return
     _logger.warning(
         "Agentic beta fallback stage=%s reason=%s error_type=%s "
         "safety_reason_count=%s safety_reasons=%s "
@@ -304,3 +488,22 @@ def _safe_reason_name(reason: str) -> str:
     safe = reason.lower().replace("/", " ")
     safe = "_".join(part for part in safe.split() if part)
     return safe[:80] or "unknown"
+
+
+class _AgenticPipelineDeadline:
+    def __init__(self, *, timeout_seconds: float) -> None:
+        self._deadline = time.monotonic() + timeout_seconds
+
+    @property
+    def remaining_seconds(self) -> float:
+        return max(0.0, self._deadline - time.monotonic())
+
+    @property
+    def expired(self) -> bool:
+        return self.remaining_seconds <= 0
+
+    def raise_if_expired(self) -> None:
+        if self.expired:
+            raise AgenticPipelineTimeout(
+                "Agentic pipeline deadline exceeded"
+            )

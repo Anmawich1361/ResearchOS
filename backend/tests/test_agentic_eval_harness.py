@@ -211,6 +211,7 @@ def _make_agentic_config(**overrides: object) -> AgenticResearchConfig:
         "model": "gpt-5.4-mini",
         "web_search_enabled": False,
         "timeout_seconds": 1.0,
+        "pipeline_timeout_seconds": 45.0,
         "max_output_tokens": 8000,
         "reasoning_effort": "minimal",
     }

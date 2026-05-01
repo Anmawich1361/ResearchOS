@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import patch
 
@@ -8,11 +9,18 @@ from app.agentic.diagnostics import (
 )
 from app.agentic.openai_client import AgenticResearchError
 from app.agentic.pipeline import run_agentic_research_pipeline
+from app.agentic.prompts import (
+    FRAMEWORK_PROMPT,
+    SKEPTIC_PROMPT,
+    SOURCE_RESEARCH_PROMPT,
+    SYNTHESIS_PROMPT,
+)
 from app.demo_cases import CANADIAN_BANKS_RESEARCH_RUN
 from app.schemas import ResearchRunRequest
 
 
 CUSTOM_QUESTION = "How would tariff shocks affect US industrial margins?"
+TARGET_QUESTION = "How would a stronger US dollar affect semiconductor earnings?"
 
 
 class AgenticPipelineTest(unittest.TestCase):
@@ -101,6 +109,158 @@ class AgenticPipelineTest(unittest.TestCase):
             ],
         )
 
+    def test_valid_agentic_output_without_data_evidence_passes_web_disabled(
+        self,
+    ) -> None:
+        valid_run = _valid_agentic_run(question=TARGET_QUESTION)
+        client = _FakeClient(_valid_stage_responses(valid_run))
+
+        run = run_agentic_research_pipeline(
+            ResearchRunRequest(question=TARGET_QUESTION),
+            config=_config(enabled=True, api_key="test-openai-key"),
+            client=client,
+        )
+
+        self.assertEqual(run.question, TARGET_QUESTION)
+        self.assertEqual(run.scenario, "Agentic beta macro transmission")
+        self.assertFalse(any(item.type == "Data" for item in run.evidence))
+        self.assertFalse(
+            any(node.evidenceType == "Data" for node in run.transmissionNodes)
+        )
+
+    def test_stage_prompts_do_not_instruct_agentic_data_evidence(self) -> None:
+        prompts = [
+            SOURCE_RESEARCH_PROMPT,
+            FRAMEWORK_PROMPT,
+            SKEPTIC_PROMPT,
+            SYNTHESIS_PROMPT,
+        ]
+        allowed_labels = [
+            "Source claim",
+            "Framework inference",
+            "Narrative signal",
+            "Open question",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt[:24]):
+                flattened_prompt = " ".join(prompt.split())
+                self.assertIn("Do not use Data", prompt)
+                for label in allowed_labels:
+                    self.assertIn(label, flattened_prompt)
+
+    def test_source_stage_receives_web_search_disabled_context(self) -> None:
+        client = _FakeClient(_valid_stage_responses(_valid_agentic_run()))
+
+        run_agentic_research_pipeline(
+            ResearchRunRequest(question=CUSTOM_QUESTION),
+            config=_config(enabled=True, api_key="test-openai-key"),
+            client=client,
+        )
+
+        source_request = client.requests[1]
+        source_input = source_request["input_data"]
+        self.assertEqual(source_request["stage_name"], "agentic_source_research")
+        self.assertIs(source_request["allow_web_search"], False)
+        self.assertEqual(source_input["webSearchEnabled"], False)
+        self.assertEqual(source_input["sourceMode"], "framework_only")
+
+    def test_pipeline_timeout_falls_back_with_safe_diagnostics(self) -> None:
+        delay_seconds = 0.5
+        client = _SlowStageClient(
+            _valid_stage_responses(_valid_agentic_run()),
+            slow_stage="agentic_planner",
+            delay_seconds=delay_seconds,
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            start_time = time.monotonic()
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(
+                    enabled=True,
+                    api_key="test-openai-key",
+                    pipeline_timeout_seconds=0.01,
+                ),
+                client=client,
+            )
+            elapsed = time.monotonic() - start_time
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        self.assertLess(elapsed, 0.25)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+        self.assertEqual(
+            diagnostics["lastErrorType"],
+            "TimeoutError",
+        )
+        time.sleep(delay_seconds + 0.02)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+        self.assertEqual(
+            diagnostics["lastErrorType"],
+            "TimeoutError",
+        )
+
+    def test_stale_timed_out_worker_cannot_overwrite_newer_diagnostics(
+        self,
+    ) -> None:
+        delay_seconds = 0.5
+        client = _SlowStageClient(
+            _valid_stage_responses(_valid_agentic_run()),
+            slow_stage="agentic_planner",
+            delay_seconds=delay_seconds,
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(
+                    enabled=True,
+                    api_key="test-openai-key",
+                    pipeline_timeout_seconds=0.01,
+                ),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        self.assertEqual(
+            get_agentic_diagnostics()["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+
+        run = run_agentic_research_pipeline(
+            ResearchRunRequest(question=CUSTOM_QUESTION),
+            config=_config(enabled=False, api_key=None),
+            client=_FailingClient(),
+        )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "config_unavailable",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "config")
+        self.assertIsNone(diagnostics["lastErrorType"])
+
+        time.sleep(delay_seconds + 0.02)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "config_unavailable",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "config")
+        self.assertIsNone(diagnostics["lastErrorType"])
+
     def test_malformed_agentic_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())
         responses["agentic_framework"] = {"not": "valid"}
@@ -148,6 +308,50 @@ class AgenticPipelineTest(unittest.TestCase):
         self.assertEqual(diagnostics["lastFallbackReason"], "invalid_json")
         self.assertEqual(diagnostics["lastFallbackStage"], "planner")
         self.assertEqual(diagnostics["lastErrorType"], "AgenticResearchError")
+
+    def test_source_research_openai_error_records_specific_stage(
+        self,
+    ) -> None:
+        client = _StageErrorClient(
+            _valid_stage_responses(_valid_agentic_run()),
+            error_stage="agentic_source_research",
+            error=AgenticResearchError(
+                "OpenAI Responses API returned invalid JSON",
+                reason="invalid_json",
+            ),
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(diagnostics["lastFallbackReason"], "invalid_json")
+        self.assertEqual(diagnostics["lastFallbackStage"], "source_research")
+        self.assertEqual(diagnostics["lastErrorType"], "AgenticResearchError")
+
+    def test_malformed_synthesis_records_normalization_stage(self) -> None:
+        responses = _valid_stage_responses(_valid_agentic_run())
+        responses["agentic_synthesis"] = {"not": "valid"}
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(enabled=True, api_key="test-openai-key"),
+                client=_FakeClient(responses),
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "normalization_failed",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "normalization")
 
     def test_out_of_scope_planner_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())
@@ -281,10 +485,12 @@ class _FakeClient:
     def __init__(self, responses: dict[str, dict[str, object]]) -> None:
         self._responses = responses
         self.stage_names: list[str] = []
+        self.requests: list[dict[str, object]] = []
 
     def create_structured_response(self, **kwargs: object) -> dict[str, object]:
         stage_name = str(kwargs["stage_name"])
         self.stage_names.append(stage_name)
+        self.requests.append(kwargs)
         return self._responses[stage_name]
 
 
@@ -301,11 +507,52 @@ class _ErrorClient:
         raise self._error
 
 
+class _StageErrorClient(_FakeClient):
+    def __init__(
+        self,
+        responses: dict[str, dict[str, object]],
+        *,
+        error_stage: str,
+        error: Exception,
+    ) -> None:
+        super().__init__(responses)
+        self._error_stage = error_stage
+        self._error = error
+
+    def create_structured_response(self, **kwargs: object) -> dict[str, object]:
+        stage_name = str(kwargs["stage_name"])
+        if stage_name == self._error_stage:
+            self.stage_names.append(stage_name)
+            self.requests.append(kwargs)
+            raise self._error
+        return super().create_structured_response(**kwargs)
+
+
+class _SlowStageClient(_FakeClient):
+    def __init__(
+        self,
+        responses: dict[str, dict[str, object]],
+        *,
+        slow_stage: str,
+        delay_seconds: float,
+    ) -> None:
+        super().__init__(responses)
+        self._slow_stage = slow_stage
+        self._delay_seconds = delay_seconds
+
+    def create_structured_response(self, **kwargs: object) -> dict[str, object]:
+        stage_name = str(kwargs["stage_name"])
+        if stage_name == self._slow_stage:
+            time.sleep(self._delay_seconds)
+        return super().create_structured_response(**kwargs)
+
+
 def _config(
     *,
     enabled: bool,
     api_key: str | None,
     web_search_enabled: bool = False,
+    pipeline_timeout_seconds: float = 45.0,
 ) -> AgenticResearchConfig:
     return AgenticResearchConfig(
         enabled=enabled,
@@ -313,6 +560,7 @@ def _config(
         model="gpt-5.4-mini",
         web_search_enabled=web_search_enabled,
         timeout_seconds=1.0,
+        pipeline_timeout_seconds=pipeline_timeout_seconds,
         max_output_tokens=4000,
         reasoning_effort="minimal",
     )
@@ -320,6 +568,7 @@ def _config(
 
 def _valid_agentic_run(
     *,
+    question: str = CUSTOM_QUESTION,
     headline: str | None = None,
     thesis: str | None = None,
     include_data_evidence: bool = False,
@@ -328,7 +577,7 @@ def _valid_agentic_run(
     run = CANADIAN_BANKS_RESEARCH_RUN.model_copy(
         deep=True,
         update={
-            "question": CUSTOM_QUESTION,
+            "question": question,
             "timestamp": "Agentic beta run | mocked",
             "scenario": "Agentic beta macro transmission",
             "headline": headline

@@ -5,6 +5,7 @@ from typing import Mapping
 
 DEFAULT_RESEARCH_MODEL = "gpt-5.4-mini"
 DEFAULT_TIMEOUT_SECONDS = 30
+DEFAULT_PIPELINE_TIMEOUT_SECONDS = 45
 DEFAULT_MAX_OUTPUT_TOKENS = 8000
 DEFAULT_REASONING_EFFORT = "minimal"
 REASONING_EFFORTS = {"minimal", "low", "medium", "high"}
@@ -18,6 +19,7 @@ class AgenticResearchConfig:
     model: str
     web_search_enabled: bool
     timeout_seconds: float
+    pipeline_timeout_seconds: float
     max_output_tokens: int
     reasoning_effort: str
 
@@ -43,7 +45,12 @@ def get_agentic_research_config(
 ) -> AgenticResearchConfig:
     source = env if env is not None else os.environ
     timeout_seconds = _parse_timeout(
-        source.get("AGENTIC_RESEARCH_TIMEOUT_SECONDS")
+        source.get("AGENTIC_RESEARCH_TIMEOUT_SECONDS"),
+        default_seconds=DEFAULT_TIMEOUT_SECONDS,
+    )
+    pipeline_timeout_seconds = _parse_timeout(
+        source.get("AGENTIC_PIPELINE_TIMEOUT_SECONDS"),
+        default_seconds=DEFAULT_PIPELINE_TIMEOUT_SECONDS,
     )
     max_output_tokens = _parse_max_output_tokens(
         source.get("AGENTIC_MAX_OUTPUT_TOKENS")
@@ -59,6 +66,7 @@ def get_agentic_research_config(
             source.get("AGENTIC_WEB_SEARCH_ENABLED")
         ),
         timeout_seconds=timeout_seconds,
+        pipeline_timeout_seconds=pipeline_timeout_seconds,
         max_output_tokens=max_output_tokens,
         reasoning_effort=_parse_reasoning_effort(
             source.get("AGENTIC_REASONING_EFFORT")
@@ -70,17 +78,21 @@ def _is_truthy(value: str | None) -> bool:
     return (value or "").strip().lower() in TRUTHY_VALUES
 
 
-def _parse_timeout(value: str | None) -> float:
+def _parse_timeout(
+    value: str | None,
+    *,
+    default_seconds: float,
+) -> float:
     if not value:
-        return float(DEFAULT_TIMEOUT_SECONDS)
+        return float(default_seconds)
 
     try:
         parsed = float(value)
     except ValueError:
-        return float(DEFAULT_TIMEOUT_SECONDS)
+        return float(default_seconds)
 
     if parsed <= 0:
-        return float(DEFAULT_TIMEOUT_SECONDS)
+        return float(default_seconds)
 
     return parsed
 

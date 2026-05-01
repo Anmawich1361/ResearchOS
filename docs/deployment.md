@@ -38,10 +38,13 @@ OPENAI_API_KEY=<server-side key>
 OPENAI_RESEARCH_MODEL=gpt-5.4-mini
 AGENTIC_WEB_SEARCH_ENABLED=false
 AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+AGENTIC_PIPELINE_TIMEOUT_SECONDS=45
 ```
 
 Leave `AGENTIC_RESEARCH_ENABLED` unset or false to keep deterministic fallback
-only. Do not configure `OPENAI_API_KEY` in Vercel; it is backend-only.
+only. `AGENTIC_PIPELINE_TIMEOUT_SECONDS` bounds the synchronous beta run before
+safe deterministic fallback. Do not configure `OPENAI_API_KEY` in Vercel; it is
+backend-only.
 
 Use the frontend origin only, without a path. Example:
 

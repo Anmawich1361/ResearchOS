@@ -18,6 +18,7 @@ OPENAI_API_KEY=<server-side key>
 OPENAI_RESEARCH_MODEL=gpt-5.4-mini
 AGENTIC_WEB_SEARCH_ENABLED=false
 AGENTIC_RESEARCH_TIMEOUT_SECONDS=30
+AGENTIC_PIPELINE_TIMEOUT_SECONDS=45
 AGENTIC_MAX_OUTPUT_TOKENS=8000
 ```
 
@@ -25,6 +26,10 @@ Only `AGENTIC_RESEARCH_ENABLED=true` and `OPENAI_API_KEY` are required to make
 the beta configured. `OPENAI_RESEARCH_MODEL` defaults to `gpt-5.4-mini`.
 `AGENTIC_WEB_SEARCH_ENABLED` must be explicitly enabled before the source
 research stage can request web search.
+`AGENTIC_RESEARCH_TIMEOUT_SECONDS` controls each OpenAI request timeout.
+`AGENTIC_PIPELINE_TIMEOUT_SECONDS` controls the overall synchronous beta
+deadline and defaults to `45` so the endpoint can fall back before local smoke
+scripts time out.
 `AGENTIC_MAX_OUTPUT_TOKENS` defaults to `8000` so reasoning models have room to
 produce complete structured JSON.
 
@@ -47,6 +52,10 @@ Planner -> Source research -> Framework -> Skeptic -> Synthesis
 The stages classify the question, gather compact source notes when configured,
 build a macro-transmission map, challenge the thesis, and normalize the result
 into the existing `ResearchRun` schema.
+
+When web search is disabled, the source stage stays in framework-only mode: it
+may produce compact context notes and open questions, but it must not claim live
+source verification or use `Data` evidence.
 
 The output must preserve the exact evidence labels:
 
@@ -128,6 +137,16 @@ inspect backend logs for the concise agentic fallback `stage` and `reason`.
 The status endpoint also exposes safe last-run fields such as
 `lastFallbackReason`, `lastFallbackStage`, `lastRunAt`, `lastSucceededAt`, and
 `lastErrorType`.
+`scripts/debug_agentic_local.sh` prints these fields after a local smoke test so
+stage-specific fallback reasons can be checked without exposing prompts,
+responses, or secrets.
+
+If the full staged workflow exceeds `AGENTIC_PIPELINE_TIMEOUT_SECONDS`, the
+endpoint returns deterministic fallback and records `lastFallbackStage=pipeline`
+and `lastFallbackReason=pipeline_timeout`.
+The timed-out worker may continue briefly in the background until the in-flight
+OpenAI SDK request reaches its own request timeout; later deadline checks keep
+the accepted API response on deterministic fallback.
 
 A direct OpenAI Responses API call succeeding only confirms basic credentials
 and model access. The staged ResearchOS pipeline can still fall back if the

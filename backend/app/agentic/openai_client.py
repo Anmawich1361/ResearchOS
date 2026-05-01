@@ -43,6 +43,7 @@ class OpenAIResearchClient:
         schema: dict[str, Any],
         input_data: dict[str, Any],
         allow_web_search: bool = False,
+        request_timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self._config.model,
@@ -70,6 +71,9 @@ class OpenAIResearchClient:
             payload["tools"] = [{"type": "web_search"}]
             payload["tool_choice"] = "required"
             payload["include"] = ["web_search_call.action.sources"]
+
+        if request_timeout_seconds is not None:
+            payload["timeout"] = request_timeout_seconds
 
         try:
             response = self._client.responses.create(**payload)

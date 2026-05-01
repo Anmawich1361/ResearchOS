@@ -71,6 +71,14 @@ class OpenAIResearchClientTest(unittest.TestCase):
         self.assertEqual(payload["tools"], [{"type": "web_search"}])
         self.assertEqual(payload["tool_choice"], "required")
 
+    def test_request_timeout_can_be_passed_to_sdk_request(self) -> None:
+        payload = _capture_request_payload(
+            web_search_enabled=False,
+            request_timeout_seconds=12.5,
+        )
+
+        self.assertEqual(payload["timeout"], 12.5)
+
     def test_connection_error_maps_to_url_error(self) -> None:
         with self.assertRaises(AgenticResearchError) as context:
             _create_response_from_sdk(side_effect=_FakeAPIConnectionError())
@@ -329,6 +337,7 @@ def _capture_request_payload(
     web_search_enabled: bool,
     stage_name: str = "agentic_source_research",
     schema: dict[str, object] | None = None,
+    request_timeout_seconds: float | None = None,
 ) -> dict[str, object]:
     sdk_client = _FakeSDKClient()
 
@@ -339,6 +348,7 @@ def _capture_request_payload(
             model="gpt-5.4-mini",
             web_search_enabled=web_search_enabled,
             timeout_seconds=1.0,
+            pipeline_timeout_seconds=45.0,
             max_output_tokens=4000,
             reasoning_effort="minimal",
         ),
@@ -351,6 +361,7 @@ def _capture_request_payload(
         schema=schema or {"type": "object"},
         input_data={"question": "How do tariffs affect margins?"},
         allow_web_search=True,
+        request_timeout_seconds=request_timeout_seconds,
     )
 
     assert sdk_client.responses.payload is not None
@@ -379,6 +390,7 @@ def _create_response_from_sdk(
             model="gpt-5",
             web_search_enabled=False,
             timeout_seconds=1.0,
+            pipeline_timeout_seconds=45.0,
             max_output_tokens=4000,
             reasoning_effort="minimal",
         ),
