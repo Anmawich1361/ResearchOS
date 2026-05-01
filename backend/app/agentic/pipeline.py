@@ -10,6 +10,7 @@ from app.agentic.config import (
     get_agentic_research_config,
 )
 from app.agentic.diagnostics import (
+    close_agentic_run,
     mark_agentic_run_started,
     record_agentic_fallback,
     record_agentic_success,
@@ -60,10 +61,11 @@ def run_agentic_research_pipeline(
 ) -> ResearchRun:
     resolved_config = config or get_agentic_research_config()
     fallback_run = run_research_pipeline(request)
-    mark_agentic_run_started()
+    run_id = mark_agentic_run_started()
 
     if contains_forbidden_research_intent(request.question):
         _record_fallback(
+            run_id=run_id,
             stage="input_safety",
             reason="forbidden_input",
             config=resolved_config,
@@ -72,6 +74,7 @@ def run_agentic_research_pipeline(
 
     if not resolved_config.available:
         _record_fallback(
+            run_id=run_id,
             stage="config",
             reason="config_unavailable",
             config=resolved_config,
@@ -88,6 +91,7 @@ def run_agentic_research_pipeline(
         fallback_run,
         resolved_config,
         client,
+        run_id,
     )
     try:
         run = future.result(
@@ -96,11 +100,13 @@ def run_agentic_research_pipeline(
     except FutureTimeout:
         future.cancel()
         _record_fallback(
+            run_id=run_id,
             stage="pipeline",
             reason="pipeline_timeout",
             config=resolved_config,
             error_type="TimeoutError",
         )
+        close_agentic_run(run_id)
         return fallback_run
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
@@ -113,6 +119,7 @@ def _run_configured_agentic_research_pipeline(
     fallback_run: ResearchRun,
     resolved_config: AgenticResearchConfig,
     client: OpenAIResearchClient | None,
+    run_id: str,
 ) -> ResearchRun:
     current_stage = "client_setup"
     deadline = _AgenticPipelineDeadline(
@@ -130,6 +137,7 @@ def _run_configured_agentic_research_pipeline(
         )
         if planner.scope == "out_of_scope":
             _record_fallback(
+                run_id=run_id,
                 stage=current_stage,
                 reason="planner_out_of_scope",
                 config=resolved_config,
@@ -184,6 +192,7 @@ def _run_configured_agentic_research_pipeline(
         safety = validate_agentic_research_run(run)
         if not safety.passed:
             _record_fallback(
+                run_id=run_id,
                 stage=current_stage,
                 reason="safety_failed",
                 config=resolved_config,
@@ -192,6 +201,7 @@ def _run_configured_agentic_research_pipeline(
             return fallback_run
     except AgenticPipelineTimeout as exc:
         _record_fallback(
+            run_id=run_id,
             stage="pipeline",
             reason="pipeline_timeout",
             config=resolved_config,
@@ -204,6 +214,7 @@ def _run_configured_agentic_research_pipeline(
             exc,
         ):
             _record_fallback(
+                run_id=run_id,
                 stage="pipeline",
                 reason="pipeline_timeout",
                 config=resolved_config,
@@ -211,6 +222,7 @@ def _run_configured_agentic_research_pipeline(
             )
             return fallback_run
         _record_fallback(
+            run_id=run_id,
             stage=current_stage,
             reason=_fallback_reason_for_exception(current_stage, exc),
             config=resolved_config,
@@ -218,7 +230,7 @@ def _run_configured_agentic_research_pipeline(
         )
         return fallback_run
 
-    record_agentic_success()
+    record_agentic_success(run_id=run_id)
     return run
 
 
@@ -440,6 +452,7 @@ def _should_treat_as_pipeline_timeout(
 
 def _record_fallback(
     *,
+    run_id: str,
     stage: str,
     reason: str,
     config: AgenticResearchConfig,
@@ -449,11 +462,14 @@ def _record_fallback(
     safe_safety_reasons = tuple(
         _safe_reason_name(reason_text) for reason_text in safety_reasons
     )
-    record_agentic_fallback(
+    recorded = record_agentic_fallback(
+        run_id=run_id,
         reason=reason,
         stage=stage,
         error_type=error_type,
     )
+    if not recorded:
+        return
     _logger.warning(
         "Agentic beta fallback stage=%s reason=%s error_type=%s "
         "safety_reason_count=%s safety_reasons=%s "

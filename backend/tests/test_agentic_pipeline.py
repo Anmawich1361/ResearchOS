@@ -199,6 +199,67 @@ class AgenticPipelineTest(unittest.TestCase):
             "TimeoutError",
         )
         time.sleep(delay_seconds + 0.02)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "pipeline")
+        self.assertEqual(
+            diagnostics["lastErrorType"],
+            "TimeoutError",
+        )
+
+    def test_stale_timed_out_worker_cannot_overwrite_newer_diagnostics(
+        self,
+    ) -> None:
+        delay_seconds = 0.5
+        client = _SlowStageClient(
+            _valid_stage_responses(_valid_agentic_run()),
+            slow_stage="agentic_planner",
+            delay_seconds=delay_seconds,
+        )
+
+        with self.assertLogs("app.agentic.pipeline", level="WARNING"):
+            run = run_agentic_research_pipeline(
+                ResearchRunRequest(question=CUSTOM_QUESTION),
+                config=_config(
+                    enabled=True,
+                    api_key="test-openai-key",
+                    pipeline_timeout_seconds=0.01,
+                ),
+                client=client,
+            )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        self.assertEqual(
+            get_agentic_diagnostics()["lastFallbackReason"],
+            "pipeline_timeout",
+        )
+
+        run = run_agentic_research_pipeline(
+            ResearchRunRequest(question=CUSTOM_QUESTION),
+            config=_config(enabled=False, api_key=None),
+            client=_FailingClient(),
+        )
+
+        self.assertEqual(run.scenario, CANADIAN_BANKS_RESEARCH_RUN.scenario)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "config_unavailable",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "config")
+        self.assertIsNone(diagnostics["lastErrorType"])
+
+        time.sleep(delay_seconds + 0.02)
+        diagnostics = get_agentic_diagnostics()
+        self.assertEqual(
+            diagnostics["lastFallbackReason"],
+            "config_unavailable",
+        )
+        self.assertEqual(diagnostics["lastFallbackStage"], "config")
+        self.assertIsNone(diagnostics["lastErrorType"])
 
     def test_malformed_agentic_output_falls_back(self) -> None:
         responses = _valid_stage_responses(_valid_agentic_run())
