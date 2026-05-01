@@ -130,6 +130,27 @@ export function TransmissionMap({
 }: TransmissionMapProps) {
   const [selectedId, setSelectedId] = useState(nodes[0]?.id ?? "");
 
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.id === selectedId) ?? nodes[0],
+    [nodes, selectedId],
+  );
+
+  const selectedNodeId = selectedNode?.id ?? "";
+
+  const focusedEdgeIds = useMemo(
+    () =>
+      new Set(
+        edges
+          .filter(
+            (edge) =>
+              selectedNodeId !== "" &&
+              (edge.source === selectedNodeId || edge.target === selectedNodeId),
+          )
+          .map((edge) => edge.id),
+      ),
+    [edges, selectedNodeId],
+  );
+
   const flowNodes = useMemo<Node<MapNodeData>[]>(
     () =>
       nodes.map((node) => ({
@@ -137,43 +158,48 @@ export function TransmissionMap({
         type: "transmission",
         position: { x: node.x, y: node.y },
         data: node,
-        selected: node.id === selectedId,
+        selected: node.id === selectedNodeId,
       })),
-    [nodes, selectedId],
+    [nodes, selectedNodeId],
   );
 
   const flowEdges = useMemo<Edge[]>(
     () =>
-      edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        type: "smoothstep",
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: edgeTone[edge.polarity],
-        },
-        style: {
-          stroke: edgeTone[edge.polarity],
-          strokeWidth: 1.6,
-        },
-        labelStyle: {
-          fill: "#cbd5e1",
-          fontSize: 11,
-          fontWeight: 500,
-        },
-        labelBgStyle: {
-          fill: "rgba(9, 9, 11, 0.84)",
-        },
-        labelBgPadding: [6, 3],
-      })),
-    [edges],
-  );
+      edges.map((edge) => {
+        const isFocused = focusedEdgeIds.has(edge.id);
+        const hasSelectedNode = selectedNodeId !== "";
 
-  const selectedNode = useMemo(
-    () => nodes.find((node) => node.id === selectedId) ?? nodes[0],
-    [nodes, selectedId],
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label,
+          type: "smoothstep",
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: edgeTone[edge.polarity],
+          },
+          style: {
+            stroke: edgeTone[edge.polarity],
+            strokeWidth: isFocused ? 2.4 : 1.2,
+            opacity: !hasSelectedNode || isFocused ? 0.96 : 0.3,
+          },
+          labelStyle: {
+            fill: "#e2e8f0",
+            fontSize: 11,
+            fontWeight: isFocused ? 650 : 500,
+            opacity: isFocused ? 1 : 0,
+          },
+          labelBgStyle: {
+            fill: "rgba(9, 9, 11, 0.88)",
+            opacity: isFocused ? 1 : 0,
+          },
+          labelBgPadding: [6, 3],
+          labelShowBg: isFocused,
+          zIndex: isFocused ? 2 : 1,
+        };
+      }),
+    [edges, focusedEdgeIds, selectedNodeId],
   );
 
   const handleNodeClick = useCallback((_: unknown, node: Node<MapNodeData>) => {
