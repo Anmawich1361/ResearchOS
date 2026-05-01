@@ -42,7 +42,7 @@ Implementation work should still follow `AGENTS.md` and
 | RBUG-003 | Should fix | Open | Agentic reliability | Agentic request path can block synchronously for too long | `backend/app/agentic/pipeline.py`, `backend/app/agentic/config.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-004 | Should fix | Open | Frontend contract boundary | Frontend blindly trusts backend response shapes | `frontend/lib/api.ts`, `frontend/lib/types.ts` | Yellow | High | TBD |
 | RBUG-005 | Should fix | Open | Frontend source observability | Source status marks healthy non-BoC runs as fallback | `frontend/components/ResearchDashboard.tsx`, `frontend/components/ResearchSourceStatus.tsx` | Yellow | High | TBD |
-| RBUG-006 | Should fix | Open | Frontend fallback state | Frontend fallback discards the submitted question | `frontend/components/ResearchDashboard.tsx` | Green | High | TBD |
+| RBUG-006 | Should fix | In progress | Frontend fallback state | Frontend fallback discards the submitted question | `frontend/components/ResearchDashboard.tsx` | Green | High | TBD |
 | RBUG-007 | Should fix | Open | Agentic tests / network isolation | Backend tests still hide live BoC access | `backend/tests/test_agentic_eval_harness.py`, `backend/tests/test_agentic_safety.py` | Red | High | Wait for active agentic backend PR (#27 at creation time) |
 | RBUG-008 | Defer | Deferred | Backend maintainability | Legacy deterministic agent modules duplicate unused pipeline logic | `backend/app/agents/` | Green | Medium | TBD |
 | RBUG-009 | Defer | Deferred | Repo hygiene | Local generated or duplicate artifacts are easy to stage accidentally | local checkout hygiene, optional `.gitignore` follow-up | Green | High | TBD |
@@ -168,7 +168,7 @@ Implementation work should still follow `AGENTS.md` and
 ### RBUG-006 - Frontend fallback discards the submitted question
 
 - Severity: Should fix
-- Status: Open
+- Status: In progress
 - Area: Frontend fallback state
 - Files: `frontend/components/ResearchDashboard.tsx`
 - Affected behavior: On backend request failure, the UI resets both the run and
